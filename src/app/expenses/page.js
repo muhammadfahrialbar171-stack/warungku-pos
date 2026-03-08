@@ -316,15 +316,20 @@ export default function ExpensesPage() {
                     />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Select
-                            label="Kategori"
-                            value={formData.category}
-                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        >
-                            {EXPENSE_CATEGORIES.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.label}</option>
-                            ))}
-                        </Select>
+                        <div className="space-y-1.5">
+                            <label className="block text-sm font-medium text-slate-300">
+                                Kategori
+                            </label>
+                            <select
+                                className="w-full bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-800/80 transition-all duration-300 cursor-pointer shadow-inner appearance-none"
+                                value={formData.category}
+                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                            >
+                                {EXPENSE_CATEGORIES.map(cat => (
+                                    <option key={cat.id} value={cat.id} className="bg-slate-800">{cat.label}</option>
+                                ))}
+                            </select>
+                        </div>
 
                         <Input
                             label="Tanggal"
@@ -343,7 +348,6 @@ export default function ExpensesPage() {
                         onChange={(e) => {
                             // Only allow numbers
                             const val = e.target.value.replace(/\D/g, '');
-                            // Format with thousand separator if needed, or just plain number
                             setFormData({ ...formData, amount: val });
                         }}
                         icon={Wallet}
