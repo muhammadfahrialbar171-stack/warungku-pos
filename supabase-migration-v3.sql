@@ -30,10 +30,10 @@ RETURNS UUID AS $$
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
 -- Users: can view self + team members (owner sees cashiers, cashier sees owner)
+-- Users: can view self + team members (owner sees cashiers, cashier sees owner)
 CREATE POLICY "Users can view profiles" ON public.users FOR SELECT USING (
   id = auth.uid() OR
-  owner_id = auth.uid() OR
-  id = (SELECT owner_id FROM public.users WHERE id = auth.uid())
+  owner_id = auth.uid()
 );
 CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Users can insert profile" ON public.users FOR INSERT WITH CHECK (auth.uid() = id);

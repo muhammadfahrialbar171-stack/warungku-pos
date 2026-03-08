@@ -1,11 +1,37 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { getGreeting } from '@/lib/utils';
-import { Bell, Search } from 'lucide-react';
+import { Bell, Search, Download } from 'lucide-react';
 
 export default function Header() {
     const { user } = useAuthStore();
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isInstallable, setIsInstallable] = useState(false);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setIsInstallable(true);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+
+        if (outcome === 'accepted') {
+            setIsInstallable(false);
+            setDeferredPrompt(null);
+        }
+    };
 
     return (
         <header className="sticky top-0 z-30 glass border-b border-slate-800 px-4 md:px-6 py-3">
@@ -22,6 +48,15 @@ export default function Header() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                    {isInstallable && (
+                        <button
+                            onClick={handleInstallClick}
+                            className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors border border-indigo-500/20 text-sm font-medium"
+                        >
+                            <Download size={16} />
+                            Install App
+                        </button>
+                    )}
                     <button className="p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer relative">
                         <Bell size={20} />
                         <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full" />

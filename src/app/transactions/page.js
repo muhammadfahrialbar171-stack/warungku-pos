@@ -39,7 +39,7 @@ export default function TransactionsPage() {
         try {
             const { data } = await supabase
                 .from('transactions')
-                .select('*')
+                .select('*, customers(name)')
                 .eq('user_id', user.id)
                 .gte('created_at', dayjs(dateFrom).startOf('day').toISOString())
                 .lte('created_at', dayjs(dateTo).endOf('day').toISOString())
@@ -140,6 +140,7 @@ export default function TransactionsPage() {
                             <thead>
                                 <tr className="border-b border-slate-700">
                                     <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3">Invoice</th>
+                                    <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3 hidden sm:table-cell">Pelanggan</th>
                                     <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3 hidden sm:table-cell">Tanggal</th>
                                     <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3 hidden md:table-cell">Pembayaran</th>
                                     <th className="text-right text-xs font-medium text-slate-400 uppercase px-5 py-3">Total</th>
@@ -151,6 +152,7 @@ export default function TransactionsPage() {
                                 {filtered.map((tx) => (
                                     <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors">
                                         <td className="px-5 py-3.5 text-sm font-medium text-white">{tx.invoice_number}</td>
+                                        <td className="px-5 py-3.5 text-sm text-slate-400 hidden sm:table-cell">{tx.customers?.name || '-'}</td>
                                         <td className="px-5 py-3.5 text-sm text-slate-400 hidden sm:table-cell">{formatDateTime(tx.created_at)}</td>
                                         <td className="px-5 py-3.5 hidden md:table-cell">
                                             <Badge variant="info">{paymentMethodLabel(tx.payment_method)}</Badge>
@@ -180,9 +182,9 @@ export default function TransactionsPage() {
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3 text-sm">
                             <div><p className="text-slate-500">Invoice</p><p className="text-white font-medium">{detailModal.invoice_number}</p></div>
+                            <div><p className="text-slate-500">Pelanggan</p><p className="text-white">{detailModal.customers?.name || '-'}</p></div>
                             <div><p className="text-slate-500">Tanggal</p><p className="text-white">{formatDateTime(detailModal.created_at)}</p></div>
                             <div><p className="text-slate-500">Pembayaran</p><p className="text-white">{paymentMethodLabel(detailModal.payment_method)}</p></div>
-                            <div><p className="text-slate-500">Status</p><Badge variant="success">Lunas</Badge></div>
                         </div>
 
                         <div className="border-t border-slate-700 pt-4">
@@ -214,6 +216,7 @@ export default function TransactionsPage() {
                                     onClick={() => printReceipt({
                                         storeName: user?.store_name,
                                         invoiceNumber: detailModal.invoice_number,
+                                        customerName: detailModal.customers?.name,
                                         items: detailItems,
                                         totalAmount: detailModal.total_amount,
                                         totalItems: detailModal.total_items,
@@ -231,6 +234,7 @@ export default function TransactionsPage() {
                                     onClick={() => shareReceiptWhatsApp({
                                         storeName: user?.store_name,
                                         invoiceNumber: detailModal.invoice_number,
+                                        customerName: detailModal.customers?.name,
                                         items: detailItems,
                                         totalAmount: detailModal.total_amount,
                                         paymentMethod: detailModal.payment_method,

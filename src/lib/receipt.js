@@ -5,10 +5,10 @@ import { formatRupiah, formatDateTime } from '@/lib/utils';
 /**
  * Generate receipt HTML and open print dialog
  */
-export function printReceipt({ storeName, invoiceNumber, items, totalAmount, totalItems, paymentMethod, paidAmount, change, createdAt }) {
-    const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
+export function printReceipt({ storeName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, createdAt }) {
+  const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
 
-    const receiptHTML = `
+  const receiptHTML = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -57,6 +57,11 @@ export function printReceipt({ storeName, invoiceNumber, items, totalAmount, tot
     <span>Tanggal:</span>
     <span>${formatDateTime(createdAt || new Date())}</span>
   </div>
+  ${customerName ? `
+  <div class="row">
+    <span>Pelanggan:</span>
+    <span>${customerName}</span>
+  </div>` : ''}
   <div class="row">
     <span>Kasir:</span>
     <span>Admin</span>
@@ -108,40 +113,43 @@ export function printReceipt({ storeName, invoiceNumber, items, totalAmount, tot
 </body>
 </html>`;
 
-    const printWindow = window.open('', '_blank', 'width=350,height=600');
-    if (printWindow) {
-        printWindow.document.write(receiptHTML);
-        printWindow.document.close();
-        setTimeout(() => {
-            printWindow.print();
-        }, 300);
-    }
+  const printWindow = window.open('', '_blank', 'width=350,height=600');
+  if (printWindow) {
+    printWindow.document.write(receiptHTML);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 300);
+  }
 }
 
 /**
  * Share receipt via WhatsApp (text version)
  */
-export function shareReceiptWhatsApp({ storeName, invoiceNumber, items, totalAmount, paymentMethod, createdAt }) {
-    const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
+export function shareReceiptWhatsApp({ storeName, invoiceNumber, customerName, items, totalAmount, paymentMethod, createdAt }) {
+  const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
 
-    let text = `🧾 *STRUK PEMBELIAN*\n`;
-    text += `${storeName || 'WarungKu POS'}\n`;
-    text += `━━━━━━━━━━━━━━━━━━\n`;
-    text += `No: ${invoiceNumber}\n`;
-    text += `Tgl: ${formatDateTime(createdAt || new Date())}\n`;
-    text += `━━━━━━━━━━━━━━━━━━\n\n`;
+  let text = `🧾 *STRUK PEMBELIAN*\n`;
+  text += `${storeName || 'WarungKu POS'}\n`;
+  text += `━━━━━━━━━━━━━━━━━━\n`;
+  text += `No: ${invoiceNumber}\n`;
+  text += `Tgl: ${formatDateTime(createdAt || new Date())}\n`;
+  if (customerName) {
+    text += `Pelanggan: ${customerName}\n`;
+  }
+  text += `━━━━━━━━━━━━━━━━━━\n\n`;
 
-    items.forEach(item => {
-        text += `${item.product_name || item.name}\n`;
-        text += `  ${item.quantity} x ${formatRupiah(item.price)} = ${formatRupiah(item.quantity * item.price)}\n`;
-    });
+  items.forEach(item => {
+    text += `${item.product_name || item.name}\n`;
+    text += `  ${item.quantity} x ${formatRupiah(item.price)} = ${formatRupiah(item.quantity * item.price)}\n`;
+  });
 
-    text += `\n━━━━━━━━━━━━━━━━━━\n`;
-    text += `*TOTAL: ${formatRupiah(totalAmount)}*\n`;
-    text += `Bayar: ${paymentLabel}\n`;
-    text += `━━━━━━━━━━━━━━━━━━\n`;
-    text += `Terima kasih! 🙏`;
+  text += `\n━━━━━━━━━━━━━━━━━━\n`;
+  text += `*TOTAL: ${formatRupiah(totalAmount)}*\n`;
+  text += `Bayar: ${paymentLabel}\n`;
+  text += `━━━━━━━━━━━━━━━━━━\n`;
+  text += `Terima kasih! 🙏`;
 
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
 }

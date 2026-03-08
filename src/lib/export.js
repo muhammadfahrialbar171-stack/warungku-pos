@@ -55,17 +55,23 @@ export function exportDailySummaryToExcel(groupedData, labels, filename = 'ringk
         'No': index + 1,
         'Periode': label,
         'Jumlah Transaksi': groupedData[label].count,
-        'Total Penjualan (Rp)': groupedData[label].sales,
+        'Pendapatan (Rp)': groupedData[label].sales,
+        'Pengeluaran (Rp)': groupedData[label].expense,
+        'Laba Bersih (Rp)': groupedData[label].profit,
     }));
 
     const totalTx = labels.reduce((sum, l) => sum + groupedData[l].count, 0);
     const totalSales = labels.reduce((sum, l) => sum + groupedData[l].sales, 0);
+    const totalExpense = labels.reduce((sum, l) => sum + groupedData[l].expense, 0);
+    const totalProfit = labels.reduce((sum, l) => sum + groupedData[l].profit, 0);
 
     data.push({
         'No': '',
         'Periode': 'TOTAL',
         'Jumlah Transaksi': totalTx,
-        'Total Penjualan (Rp)': totalSales,
+        'Pendapatan (Rp)': totalSales,
+        'Pengeluaran (Rp)': totalExpense,
+        'Laba Bersih (Rp)': totalProfit,
     });
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -73,6 +79,8 @@ export function exportDailySummaryToExcel(groupedData, labels, filename = 'ringk
         { wch: 5 },
         { wch: 18 },
         { wch: 18 },
+        { wch: 22 },
+        { wch: 22 },
         { wch: 22 },
     ];
 

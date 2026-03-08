@@ -16,11 +16,15 @@ import {
     Share2,
     Package,
     Tag,
+    ScanLine,
+    Users,
 } from 'lucide-react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import { printReceipt, shareReceiptWhatsApp } from '@/lib/receipt';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
+import { Select } from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
@@ -32,6 +36,7 @@ export default function CashierPage() {
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [customers, setCustomers] = useState([]);
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [loading, setLoading] = useState(true);
@@ -44,12 +49,17 @@ export default function CashierPage() {
     const lastCheckoutRef = useRef(null);
     const [txDiscount, setTxDiscount] = useState('');
     const [txDiscountType, setTxDiscountType] = useState('fixed');
+    const [selectedCustomerId, setSelectedCustomerId] = useState('');
+
+    // Barcode Scanner State
+    const [scannerModal, setScannerModal] = useState(false);
+    const scannerRef = useRef(null);
 
     const loadData = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
-            const [{ data: prods }, { data: cats }] = await Promise.all([
+            const [{ data: prods }, { data: cats }, { data: custs }] = await Promise.all([
                 supabase
                     .from('products')
                     .select('*')
@@ -61,9 +71,14 @@ export default function CashierPage() {
                     .select('*')
                     .eq('user_id', user.id)
                     .order('name'),
+                supabase
+                    .from('customers')
+                    .select('*')
+                    .order('name'),
             ]);
             setProducts(prods || []);
             setCategories(cats || []);
+            setCustomers(custs || []);
         } catch (err) {
             console.error('Load error:', err);
         } finally {
@@ -111,6 +126,58 @@ export default function CashierPage() {
     const finalAmount = Math.max(0, totalAmount - txDiscountAmount);
     const change = parseInt(paidAmount || '0') - finalAmount;
 
+    // Handle Barcode Scan Success
+    const handleScanSuccess = useCallback((decodedText) => {
+        // Find product by SKU or name (assuming barcode is SKU)
+        const product = products.find(p => p.sku === decodedText);
+
+        if (product) {
+            if (product.stock > 0) {
+                const discountedPrice = getDiscountedPrice(product);
+                addItem({ ...product, price: discountedPrice });
+
+                // Play success sound (optional enhancement)
+                try {
+                    const audio = new Audio('/success-beep.mp3'); // Optional: if sound file exists
+                    audio.play().catch(() => { });
+                } catch (e) { }
+
+            } else {
+                alert(`Stok produk habis: ${product.name}`);
+            }
+        } else {
+            console.log("Barcode not found:", decodedText);
+            // Optionally could add a toast here for "Product not found"
+        }
+    }, [products, addItem]);
+
+    // Initialize/Cleanup Scanner
+    useEffect(() => {
+        let scanner = null;
+        if (scannerModal) {
+            // Need a slight delay to ensure the DOM element exists
+            setTimeout(() => {
+                scanner = new Html5QrcodeScanner(
+                    "cashier-barcode-reader",
+                    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+                    /* verbose= */ false
+                );
+                scanner.render(handleScanSuccess, (err) => {
+                    // Ignore errors as they happen frequently per frame when no barcode is in sight
+                });
+                scannerRef.current = scanner;
+            }, 100);
+        }
+
+        return () => {
+            if (scanner) {
+                scanner.clear().catch(error => {
+                    console.error("Failed to clear html5QrcodeScanner. ", error);
+                });
+            }
+        };
+    }, [scannerModal, handleScanSuccess]);
+
     const handleCheckout = async () => {
         if (processing) return;
         setProcessing(true);
@@ -124,6 +191,7 @@ export default function CashierPage() {
                 .insert({
                     user_id: user.id,
                     invoice_number: invoiceNumber,
+                    customer_id: selectedCustomerId || null,
                     subtotal: totalAmount,
                     discount_amount: txDiscountAmount,
                     total_amount: finalAmount,
@@ -172,9 +240,22 @@ export default function CashierPage() {
                 });
             }
 
+            // Reward points if customer selected (1 point per Rp 10.000 final amount)
+            const earnedPoints = Math.floor(finalAmount / 10000);
+            if (selectedCustomerId && earnedPoints > 0) {
+                const customer = customers.find(c => c.id.toString() === selectedCustomerId);
+                if (customer) {
+                    await supabase
+                        .from('customers')
+                        .update({ total_points: (customer.total_points || 0) + earnedPoints })
+                        .eq('id', customer.id);
+                }
+            }
+
             // Save checkout data for receipt
             lastCheckoutRef.current = {
                 storeName: user?.store_name,
+                customerName: customers.find(c => c.id.toString() === selectedCustomerId)?.name || '',
                 invoiceNumber,
                 items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
                 totalAmount: finalAmount,
@@ -189,6 +270,7 @@ export default function CashierPage() {
             clearCart();
             setPaidAmount('');
             setTxDiscount('');
+            setSelectedCustomerId('');
             setCheckoutModal(false);
             setSuccessModal(true);
             loadData(); // refresh products
@@ -245,6 +327,14 @@ export default function CashierPage() {
                                 </button>
                             ))}
                         </div>
+                        <Button
+                            variant="secondary"
+                            className="flex-shrink-0"
+                            icon={ScanLine}
+                            onClick={() => setScannerModal(true)}
+                        >
+                            <span className="hidden sm:inline">Scan</span>
+                        </Button>
                     </div>
 
                     {/* Product Grid */}
@@ -480,6 +570,26 @@ export default function CashierPage() {
                         </div>
                     </div>
 
+                    {/* Pelanggan */}
+                    <div>
+                        <Select
+                            label="Pilih Pelanggan (Opsional)"
+                            value={selectedCustomerId}
+                            onChange={(e) => setSelectedCustomerId(e.target.value)}
+                        >
+                            <option value="">-- Pelanggan Umum --</option>
+                            {customers.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </Select>
+                        {selectedCustomerId && finalAmount >= 10000 && (
+                            <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1">
+                                <Tag size={12} />
+                                +{Math.floor(finalAmount / 10000)} Poin Member didapatkan!
+                            </p>
+                        )}
+                    </div>
+
                     {/* Payment Method */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">Metode Pembayaran</label>
@@ -555,6 +665,40 @@ export default function CashierPage() {
                             Proses Pembayaran
                         </Button>
                     </div>
+                </div>
+            </Modal>
+
+            {/* Barcode Scanner Modal */}
+            <Modal isOpen={scannerModal} onClose={() => setScannerModal(false)} title="Scan Barcode Produk" size="md">
+                <div className="space-y-4">
+                    <div className="bg-slate-800 rounded-xl overflow-hidden min-h-[300px] flex items-center justify-center relative">
+                        <div id="cashier-barcode-reader" className="w-full"></div>
+
+                        {/* CSS overrides for the html5-qrcode library to match dark theme */}
+                        <style jsx global>{`
+                            #cashier-barcode-reader { border: none !important; width: 100%; border-radius: 0.75rem; overflow: hidden; }
+                            #cashier-barcode-reader video { border-radius: 0.75rem; }
+                            #cashier-barcode-reader__dashboard_section_csr span { color: white !important; }
+                            #cashier-barcode-reader__dashboard_section_swaplink { color: #818cf8 !important; }
+                            #cashier-barcode-reader button { 
+                                background-color: #4f46e5 !important; 
+                                color: white !important; 
+                                border: none !important; 
+                                padding: 8px 16px !important; 
+                                border-radius: 8px !important; 
+                                font-weight: 500 !important;
+                                margin: 4px !important;
+                                cursor: pointer;
+                            }
+                            #cashier-barcode-reader a { color: #818cf8 !important; }
+                        `}</style>
+                    </div>
+                    <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-center">
+                        <p className="text-sm text-indigo-300">
+                            Arahkan kamera ke barcode (SKU) produk. <br />Produk otomatis akan masuk ke keranjang.
+                        </p>
+                    </div>
+                    <Button className="w-full" variant="secondary" onClick={() => setScannerModal(false)}>Tutup</Button>
                 </div>
             </Modal>
 

@@ -8,6 +8,8 @@ import {
     DollarSign,
     ShoppingBag,
     Download,
+    Wallet,
+    PiggyBank,
 } from 'lucide-react';
 import { StatCard } from '@/components/ui/Card';
 import Card from '@/components/ui/Card';
@@ -40,22 +42,32 @@ export default function ReportsPage() {
     const [dateFrom, setDateFrom] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
     const [dateTo, setDateTo] = useState(dayjs().format('YYYY-MM-DD'));
     const [transactions, setTransactions] = useState([]);
+    const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const loadReport = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
-            const { data } = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('status', 'completed')
-                .gte('created_at', dayjs(dateFrom).startOf('day').toISOString())
-                .lte('created_at', dayjs(dateTo).endOf('day').toISOString())
-                .order('created_at', { ascending: true });
+            const [txRes, expRes] = await Promise.all([
+                supabase
+                    .from('transactions')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .eq('status', 'completed')
+                    .gte('created_at', dayjs(dateFrom).startOf('day').toISOString())
+                    .lte('created_at', dayjs(dateTo).endOf('day').toISOString())
+                    .order('created_at', { ascending: true }),
+                supabase
+                    .from('expenses')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .gte('expense_date', dayjs(dateFrom).format('YYYY-MM-DD'))
+                    .lte('expense_date', dayjs(dateTo).format('YYYY-MM-DD'))
+            ]);
 
-            setTransactions(data || []);
+            setTransactions(txRes.data || []);
+            setExpenses(expRes.data || []);
         } catch (err) {
             console.error(err);
         } finally {
@@ -67,6 +79,8 @@ export default function ReportsPage() {
 
     // Aggregate data
     const totalSales = transactions.reduce((sum, t) => sum + t.total_amount, 0);
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const netProfit = totalSales - totalExpenses;
     const totalTransactions = transactions.length;
     const totalItems = transactions.reduce((sum, t) => sum + (t.total_items || 0), 0);
     const avgTransaction = totalTransactions > 0 ? Math.round(totalSales / totalTransactions) : 0;
@@ -79,13 +93,26 @@ export default function ReportsPage() {
             : dayjs(tx.created_at).format('MMM YYYY');
 
         if (!groupedData[key]) {
-            groupedData[key] = { sales: 0, count: 0 };
+            groupedData[key] = { sales: 0, count: 0, expense: 0, profit: 0 };
         }
         groupedData[key].sales += tx.total_amount;
         groupedData[key].count += 1;
+        groupedData[key].profit = groupedData[key].sales - groupedData[key].expense;
     });
 
-    const labels = Object.keys(groupedData);
+    expenses.forEach((exp) => {
+        const key = period === 'daily'
+            ? dayjs(exp.expense_date).format('DD MMM')
+            : dayjs(exp.expense_date).format('MMM YYYY');
+
+        if (!groupedData[key]) {
+            groupedData[key] = { sales: 0, count: 0, expense: 0, profit: 0 };
+        }
+        groupedData[key].expense += exp.amount;
+        groupedData[key].profit = groupedData[key].sales - groupedData[key].expense;
+    });
+
+    const labels = Object.keys(groupedData).sort((a, b) => dayjs(a, period === 'daily' ? 'DD MMM' : 'MMM YYYY').valueOf() - dayjs(b, period === 'daily' ? 'DD MMM' : 'MMM YYYY').valueOf());
     const salesData = labels.map((key) => groupedData[key].sales);
     const countData = labels.map((key) => groupedData[key].count);
 
@@ -202,11 +229,12 @@ export default function ReportsPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 xl:grid-cols-5">
                 <StatCard title="Total Penjualan" value={formatRupiah(totalSales)} icon={DollarSign} color="indigo" />
-                <StatCard title="Total Transaksi" value={totalTransactions} icon={ShoppingBag} color="emerald" />
-                <StatCard title="Total Produk Terjual" value={totalItems} icon={BarChart3} color="amber" />
-                <StatCard title="Rata-rata per Transaksi" value={formatRupiah(avgTransaction)} icon={TrendingUp} color="blue" />
+                <StatCard title="Total Pengeluaran" value={formatRupiah(totalExpenses)} icon={Wallet} color="rose" />
+                <StatCard title="Laba Bersih" value={formatRupiah(netProfit)} icon={PiggyBank} color="emerald" />
+                <StatCard title="Total Transaksi" value={totalTransactions} icon={ShoppingBag} color="blue" />
+                <StatCard title="Produk Terjual" value={totalItems} icon={BarChart3} color="amber" className="sm:col-span-2 lg:col-span-1 xl:col-span-1" />
             </div>
 
             {/* Charts */}
@@ -264,7 +292,9 @@ export default function ReportsPage() {
                                 <tr className="border-b border-slate-700">
                                     <th className="text-left text-xs font-medium text-slate-400 uppercase px-4 py-3">Periode</th>
                                     <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Transaksi</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Penjualan</th>
+                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Pendapatan</th>
+                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Pengeluaran</th>
+                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Laba Bersih</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800">
@@ -272,15 +302,19 @@ export default function ReportsPage() {
                                     <tr key={label} className="hover:bg-slate-800/30 transition-colors">
                                         <td className="px-4 py-3 text-sm text-white">{label}</td>
                                         <td className="px-4 py-3 text-right text-sm text-slate-400">{groupedData[label].count}</td>
-                                        <td className="px-4 py-3 text-right text-sm font-medium text-emerald-400">{formatRupiah(groupedData[label].sales)}</td>
+                                        <td className="px-4 py-3 text-right text-sm font-medium text-indigo-400">{formatRupiah(groupedData[label].sales)}</td>
+                                        <td className="px-4 py-3 text-right text-sm font-medium text-rose-400">{formatRupiah(groupedData[label].expense)}</td>
+                                        <td className="px-4 py-3 text-right text-sm font-bold text-emerald-400">{formatRupiah(groupedData[label].profit)}</td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot>
-                                <tr className="border-t border-slate-600">
+                                <tr className="border-t border-slate-600 bg-slate-800/50">
                                     <td className="px-4 py-3 text-sm font-bold text-white">Total</td>
                                     <td className="px-4 py-3 text-right text-sm font-bold text-white">{totalTransactions}</td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-emerald-400">{formatRupiah(totalSales)}</td>
+                                    <td className="px-4 py-3 text-right text-sm font-bold text-indigo-400">{formatRupiah(totalSales)}</td>
+                                    <td className="px-4 py-3 text-right text-sm font-bold text-rose-400">{formatRupiah(totalExpenses)}</td>
+                                    <td className="px-4 py-3 text-right text-sm font-bold text-emerald-400">{formatRupiah(netProfit)}</td>
                                 </tr>
                             </tfoot>
                         </table>
