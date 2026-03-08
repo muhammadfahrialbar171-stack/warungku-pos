@@ -19,9 +19,11 @@ import EmptyState from '@/components/ui/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatDate, cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
 
 export default function StockPage() {
     const { user } = useAuthStore();
+    const toast = useToast();
     const [products, setProducts] = useState([]);
     const [stockHistory, setStockHistory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -59,22 +61,22 @@ export default function StockPage() {
 
     const handleAdjust = async () => {
         if (!form.product_id || !form.quantity) {
-            alert('Pilih produk dan masukkan jumlah yang valid.');
+            toast.warning('Pilih produk dan masukkan jumlah yang valid.');
             return;
         }
         const qty = parseInt(form.quantity);
         if (isNaN(qty) || qty <= 0) {
-            alert('Jumlah harus berupa angka positif.');
+            toast.warning('Jumlah harus berupa angka positif.');
             return;
         }
 
         setSaving(true);
         try {
             const product = products.find((p) => p.id === parseInt(form.product_id));
-            if (!product) { alert('Produk tidak ditemukan.'); setSaving(false); return; }
+            if (!product) { toast.error('Produk tidak ditemukan.'); setSaving(false); return; }
 
             const newStock = form.type === 'in' ? product.stock + qty : product.stock - qty;
-            if (newStock < 0) { alert('Stok tidak boleh minus! Stok saat ini: ' + product.stock); setSaving(false); return; }
+            if (newStock < 0) { toast.warning(`Stok tidak cukup! Stok saat ini: ${product.stock}`); setSaving(false); return; }
 
             await supabase.from('products').update({ stock: newStock, updated_at: new Date().toISOString() }).eq('id', product.id);
 
@@ -115,9 +117,10 @@ export default function StockPage() {
             setForm({ product_id: '', type: 'in', quantity: '', notes: '', supplier_name: '', purchase_price: '' });
             setAdjustModal(false);
             loadData();
+            toast.success('Stok berhasil disesuaikan!');
         } catch (err) {
             console.error('Stock adjustment error:', err);
-            alert('Gagal update stok: ' + (err.message || 'Terjadi kesalahan'));
+            toast.error('Gagal update stok: ' + (err.message || 'Terjadi kesalahan'));
         } finally {
             setSaving(false);
         }

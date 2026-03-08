@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
+
+// Simple sanitization: strip HTML tags and trim
+function sanitize(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/<[^>]*>/g, '').trim().slice(0, 500);
+}
 
 export async function GET(request) {
     try {
+        // Rate limit: 60 requests/minute per IP
+        const ip = getClientIP(request);
+        const { allowed } = rateLimit(ip, { limit: 60 });
+        if (!allowed) return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 });
+
         const { searchParams } = new URL(request.url);
         const search = searchParams.get('search') || '';
 
@@ -47,7 +59,28 @@ export async function GET(request) {
 
 export async function POST(request) {
     try {
+        // Rate limit: 20 requests/minute per IP (stricter for writes)
+        const ip = getClientIP(request);
+        const { allowed } = rateLimit(ip, { limit: 20 });
+        if (!allowed) return NextResponse.json({ error: 'Terlalu banyak permintaan. Coba lagi nanti.' }, { status: 429 });
+
         const body = await request.json();
+
+        // Validate required fields
+        if (!body.name || typeof body.name !== 'string' || body.name.trim().length < 1) {
+            return NextResponse.json({ error: 'Nama pelanggan wajib diisi.' }, { status: 400 });
+        }
+        if (body.phone && !/^[0-9+\-\s()]{5,20}$/.test(body.phone)) {
+            return NextResponse.json({ error: 'Format nomor telepon tidak valid.' }, { status: 400 });
+        }
+
+        // Sanitize inputs
+        const sanitizedBody = {
+            ...body,
+            name: sanitize(body.name),
+            phone: body.phone ? sanitize(body.phone) : null,
+            address: body.address ? sanitize(body.address) : null,
+        };
 
         const authHeader = request.headers.get('authorization');
         if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -66,7 +99,7 @@ export async function POST(request) {
 
         const { data, error } = await supabase
             .from('customers')
-            .insert({ ...body, user_id: ownerId })
+            .insert({ ...sanitizedBody, user_id: ownerId })
             .select()
             .single();
 

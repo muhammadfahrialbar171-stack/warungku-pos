@@ -7,37 +7,40 @@ import { formatRupiah, formatDateTime } from '@/lib/utils';
 /**
  * Export transactions report to PDF
  */
-export function exportTransactionsPDF(transactions, dateFrom, dateTo, storeName = 'WarungKu POS') {
+export function exportTransactionsPDF(transactions, dateFrom, dateTo, storeName = 'WarungKu POS', storePhone = '') {
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
 
-    // Header
+    // Branded Header Box
+    doc.setFillColor(99, 102, 241);
+    doc.rect(0, 0, pageWidth, 32, 'F');
+
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text(storeName, 14, 20);
+    doc.setTextColor(255, 255, 255);
+    doc.text(storeName, 14, 14);
 
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100);
-    doc.text('Laporan Penjualan', 14, 28);
+    doc.text('Laporan Penjualan', 14, 22);
+    if (storePhone) doc.text(`Tel: ${storePhone}`, 14, 28);
 
-    doc.setFontSize(10);
-    doc.text(`Periode: ${dateFrom} s/d ${dateTo}`, 14, 35);
-    doc.text(`Dicetak: ${formatDateTime(new Date())}`, 14, 41);
+    // Date info on right side
+    doc.setFontSize(9);
+    doc.text(`Periode: ${dateFrom} s/d ${dateTo}`, pageWidth - 14, 22, { align: 'right' });
+    doc.text(`Dicetak: ${formatDateTime(new Date())}`, pageWidth - 14, 28, { align: 'right' });
 
-    // Line
-    doc.setDrawColor(200);
-    doc.line(14, 44, 196, 44);
+    doc.setTextColor(0, 0, 0);
 
     // Summary
     const totalAmount = transactions.reduce((sum, t) => sum + t.total_amount, 0);
     const totalItems = transactions.reduce((sum, t) => sum + (t.total_items || 0), 0);
 
-    doc.setFontSize(11);
-    doc.setTextColor(0);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total Transaksi: ${transactions.length}`, 14, 52);
-    doc.text(`Total Penjualan: ${formatRupiah(totalAmount)}`, 14, 58);
-    doc.text(`Total Produk Terjual: ${totalItems}`, 14, 64);
+    doc.text(`Jumlah Transaksi: ${transactions.length}`, 14, 44);
+    doc.text(`Total Penjualan: ${formatRupiah(totalAmount)}`, 14, 51);
+    doc.text(`Total Item Terjual: ${totalItems}`, 14, 58);
 
     // Table
     const tableData = transactions.map((tx, i) => [
@@ -50,31 +53,29 @@ export function exportTransactionsPDF(transactions, dateFrom, dateTo, storeName 
         tx.status === 'completed' ? 'Lunas' : 'Pending',
     ]);
 
-    // Add total row
-    tableData.push([
-        '', '', '', 'TOTAL', formatRupiah(totalAmount), '', '',
-    ]);
+    tableData.push(['', '', '', 'TOTAL', formatRupiah(totalAmount), '', '']);
 
     doc.autoTable({
-        startY: 70,
+        startY: 64,
         head: [['No', 'Invoice', 'Tanggal', 'Item', 'Total', 'Bayar', 'Status']],
         body: tableData,
         styles: { fontSize: 8, cellPadding: 3 },
         headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [245, 245, 255] },
-        footStyles: { fontStyle: 'bold' },
         columnStyles: {
             0: { halign: 'center', cellWidth: 10 },
             4: { halign: 'right' },
             6: { halign: 'center' },
         },
+        didDrawPage: (data) => {
+            // Footer on every page
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(7);
+            doc.setTextColor(150);
+            doc.text(`${storeName} | WarungKu POS`, 14, pageHeight - 8);
+            doc.text(`Halaman ${doc.internal.getNumberOfPages()}`, pageWidth - 14, pageHeight - 8, { align: 'right' });
+        }
     });
-
-    // Footer
-    const pageHeight = doc.internal.pageSize.height;
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text(`${storeName} — Digenerate oleh WarungKu POS`, 14, pageHeight - 10);
 
     doc.save(`laporan-penjualan-${dateFrom}-${dateTo}.pdf`);
 }
@@ -82,23 +83,26 @@ export function exportTransactionsPDF(transactions, dateFrom, dateTo, storeName 
 /**
  * Export daily summary to PDF
  */
-export function exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, storeName = 'WarungKu POS') {
+export function exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, storeName = 'WarungKu POS', storePhone = '') {
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.width;
+
+    // Branded Header Box
+    doc.setFillColor(99, 102, 241);
+    doc.rect(0, 0, pageWidth, 32, 'F');
 
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text(storeName, 14, 20);
+    doc.setTextColor(255, 255, 255);
+    doc.text(storeName, 14, 14);
 
-    doc.setFontSize(12);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100);
-    doc.text('Ringkasan Penjualan', 14, 28);
+    doc.text('Ringkasan Penjualan Harian', 14, 22);
+    if (storePhone) doc.text(`Tel: ${storePhone}`, 14, 28);
+    doc.text(`Periode: ${dateFrom} s/d ${dateTo}`, pageWidth - 14, 22, { align: 'right' });
 
-    doc.setFontSize(10);
-    doc.text(`Periode: ${dateFrom} s/d ${dateTo}`, 14, 35);
-
-    doc.setDrawColor(200);
-    doc.line(14, 38, 196, 38);
+    doc.setTextColor(0, 0, 0);
 
     const tableData = labels.map((label, i) => [
         i + 1,
@@ -117,7 +121,7 @@ export function exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, sto
     tableData.push(['', 'TOTAL', totalTx, formatRupiah(totalSales), formatRupiah(totalExpense), formatRupiah(totalProfit)]);
 
     doc.autoTable({
-        startY: 44,
+        startY: 38,
         head: [['No', 'Periode', 'Transaksi', 'Pendapatan', 'Pengeluaran', 'Laba Bersih']],
         body: tableData,
         styles: { fontSize: 9, cellPadding: 3 },
@@ -130,6 +134,13 @@ export function exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, sto
             4: { halign: 'right' },
             5: { halign: 'right' },
         },
+        didDrawPage: (data) => {
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(7);
+            doc.setTextColor(150);
+            doc.text(`${storeName} | WarungKu POS`, 14, pageHeight - 8);
+            doc.text(`Halaman ${doc.internal.getNumberOfPages()}`, pageWidth - 14, pageHeight - 8, { align: 'right' });
+        }
     });
 
     doc.save(`ringkasan-${dateFrom}-${dateTo}.pdf`);

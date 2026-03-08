@@ -1,5 +1,7 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
+import { ToastProvider } from "@/components/ui/Toast";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,9 +33,12 @@ export default function RootLayout({ children }) {
   return (
     <html lang="id" className={inter.variable}>
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <ToastProvider>
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
+        </ToastProvider>
       </body>
     </html>
   );
 }
-

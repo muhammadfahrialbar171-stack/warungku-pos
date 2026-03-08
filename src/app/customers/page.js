@@ -3,18 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
+import { formatDateTime, formatRupiah, cn } from '@/lib/utils';
 import {
-    Users,
-    Search,
-    Plus,
-    Edit2,
-    Trash2,
-    Save,
-    MapPin,
-    Phone,
-    Star,
+    Users, Search, Plus, Edit2, Trash2, Save, MapPin, Phone, Star,
+    ChevronDown, ChevronUp, ShoppingBag, Loader2
 } from 'lucide-react';
-import { formatDateTime, cn } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Table from '@/components/ui/Table';
@@ -22,15 +15,20 @@ import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import { useToast } from '@/components/ui/Toast';
 
 export default function CustomersPage() {
     const { user, session } = useAuthStore();
+    const toast = useToast();
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [modal, setModal] = useState({ isOpen: false, data: null });
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
     const [saving, setSaving] = useState(false);
+    const [expandedCustomer, setExpandedCustomer] = useState(null);
+    const [txHistory, setTxHistory] = useState({});
+    const [txLoading, setTxLoading] = useState({});
 
     // Form state
     const [formData, setFormData] = useState({
@@ -102,8 +100,9 @@ export default function CustomersPage() {
 
             setModal({ isOpen: false, data: null });
             loadCustomers();
+            toast.success(modal.data ? 'Data pelanggan diperbarui!' : 'Pelanggan berhasil ditambahkan!');
         } catch (error) {
-            alert(error.message);
+            toast.error(error.message);
         } finally {
             setSaving(false);
         }
@@ -121,10 +120,32 @@ export default function CustomersPage() {
             if (!res.ok) throw new Error('Gagal menghapus pelanggan');
             setDeleteModal({ isOpen: false, id: null });
             loadCustomers();
+            toast.success('Pelanggan berhasil dihapus.');
         } catch (error) {
-            alert(error.message);
+            toast.error(error.message);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const loadTxHistory = async (customerId) => {
+        if (txHistory[customerId]) {
+            // Toggle: collapse if already expanded
+            setExpandedCustomer(prev => prev === customerId ? null : customerId);
+            return;
+        }
+        setExpandedCustomer(customerId);
+        setTxLoading(prev => ({ ...prev, [customerId]: true }));
+        try {
+            const res = await fetch(`/api/customers/${customerId}/transactions`, {
+                headers: { Authorization: `Bearer ${session?.access_token}` },
+            });
+            const data = await res.json();
+            setTxHistory(prev => ({ ...prev, [customerId]: data }));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setTxLoading(prev => ({ ...prev, [customerId]: false }));
         }
     };
 
@@ -210,7 +231,17 @@ export default function CustomersPage() {
                                                     {customer.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors">{customer.name}</p>
+                                                    <button
+                                                        onClick={() => loadTxHistory(customer.id)}
+                                                        className="text-sm font-semibold text-white hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                                    >
+                                                        {customer.name}
+                                                        {expandedCustomer === customer.id
+                                                            ? <ChevronUp size={14} className="text-indigo-400" />
+                                                            : <ChevronDown size={14} className="text-slate-500" />
+                                                        }
+                                                    </button>
+                                                    <p className="text-xs text-slate-500 mt-0.5">Klik untuk lihat riwayat</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -252,7 +283,40 @@ export default function CustomersPage() {
                                             </td>
                                         )}
                                     </tr>
-                                ))
+                                    {/* Transaction History Expansion Row */ }
+                                    { expandedCustomer === customer.id && (
+                                        <tr className="bg-slate-800/30">
+                                            <td colSpan={isOwner ? 5 : 4} className="px-6 py-4">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <ShoppingBag size={16} className="text-indigo-400" />
+                                                    <span className="text-sm font-semibold text-indigo-300">Riwayat Transaksi</span>
+                                                </div>
+                                                {txLoading[customer.id] ? (
+                                                    <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
+                                                        <Loader2 size={16} className="animate-spin" /> Memuat...
+                                                    </div>
+                                                ) : !txHistory[customer.id] || txHistory[customer.id].length === 0 ? (
+                                                    <p className="text-sm text-slate-500 py-2">Tidak ada riwayat transaksi.</p>
+                                                ) : (
+                                                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                                        {txHistory[customer.id].map(tx => (
+                                                            <div key={tx.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl px-4 py-2.5 border border-white/5">
+                                                                <div>
+                                                                    <p className="text-sm font-medium text-white">{tx.invoice_number}</p>
+                                                                    <p className="text-xs text-slate-500">{formatDateTime(tx.created_at)}</p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-sm font-bold text-emerald-400">{formatRupiah(tx.total_amount)}</p>
+                                                                    <p className="text-xs text-slate-500 capitalize">{tx.payment_method}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )}
+                            ))
                             )}
                         </tbody>
                     </table>

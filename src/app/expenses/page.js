@@ -19,6 +19,7 @@ import Input, { Select } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import { useToast } from '@/components/ui/Toast';
 import dayjs from 'dayjs';
 
 const EXPENSE_CATEGORIES = [
@@ -33,6 +34,7 @@ const EXPENSE_CATEGORIES = [
 
 export default function ExpensesPage() {
     const { user, session } = useAuthStore();
+    const toast = useToast();
     const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [month, setMonth] = useState(dayjs().format('YYYY-MM'));
@@ -126,8 +128,9 @@ export default function ExpensesPage() {
 
             setModal({ isOpen: false, data: null });
             loadExpenses();
+            toast.success(modal.data ? 'Pengeluaran berhasil diperbarui!' : 'Pengeluaran berhasil dicatat!');
         } catch (error) {
-            alert(error.message);
+            toast.error(error.message);
         } finally {
             setSaving(false);
         }
@@ -145,8 +148,9 @@ export default function ExpensesPage() {
             if (!res.ok) throw new Error('Gagal menghapus pengeluaran');
             setDeleteModal({ isOpen: false, id: null });
             loadExpenses();
+            toast.success('Pengeluaran berhasil dihapus.');
         } catch (error) {
-            alert(error.message);
+            toast.error(error.message);
         } finally {
             setSaving(false);
         }

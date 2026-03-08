@@ -34,15 +34,19 @@ import { useCartStore } from '@/store/cartStore';
 import { formatRupiah, generateInvoice, cn } from '@/lib/utils';
 import dayjs from 'dayjs';
 import { saveProductsOffline, getProductsOffline, saveCustomersOffline, getCustomersOffline, enqueueOfflineTransaction, getOfflineTransactionsQueue, removeTransactionFromQueue } from '@/lib/indexedDB';
+import { useToast } from '@/components/ui/Toast';
+import { useDebounce } from '@/hooks/useDebounce';
 
 export default function CashierPage() {
     const { user, session } = useAuthStore();
     const { items, addItem, removeItem, incrementItem, decrementItem, clearCart, getTotal, getTotalItems } = useCartStore();
+    const toast = useToast();
 
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 250);
     const [selectedCategory, setSelectedCategory] = useState('all');
     const [loading, setLoading] = useState(true);
     const [checkoutModal, setCheckoutModal] = useState(false);
@@ -110,7 +114,8 @@ export default function CashierPage() {
                     paidAmount: tx.paidAmount || tx.totalAmount,
                     change: tx.change || 0,
                     customerId: tx.customerId || null,
-                    discount: tx.txDiscount || 0,
+                    txDiscount: tx.txDiscount || 0, // FIX: consistent naming with processSupabaseCheckout
+                    taxAmount: tx.taxAmount || 0,
                     receiptHeader: tx.receiptHeader,
                     receiptFooter: tx.receiptFooter,
                     costPrice: tx.costPrice || 0,
@@ -132,7 +137,7 @@ export default function CashierPage() {
             }
 
             if (successCount > 0) {
-                alert(`Berhasil sinkronisasi ${successCount} transaksi offline ke Server.`);
+                toast.success(`Berhasil sinkronisasi ${successCount} transaksi offline ke Server.`);
             }
         } catch (err) {
             console.error('Sync error:', err);
@@ -338,11 +343,11 @@ export default function CashierPage() {
 
     const filteredProducts = useMemo(() => {
         return products.filter((p) => {
-            const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+            const matchSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase());
             const matchCategory = selectedCategory === 'all' || p.category_id === parseInt(selectedCategory);
             return matchSearch && matchCategory;
         });
-    }, [products, search, selectedCategory]);
+    }, [products, debouncedSearch, selectedCategory]);
 
     // Calculate discounted price for a product
     const getDiscountedPrice = (product) => {
@@ -392,17 +397,16 @@ export default function CashierPage() {
             }
         } else {
             console.log("Barcode not found:", decodedText);
-            // Optionally could add a toast here for "Product not found"
+            toast.warning(`Produk dengan kode "${decodedText}" tidak ditemukan.`);
         }
     }, [products, addItem]);
 
     // Initialize/Cleanup Scanner
     useEffect(() => {
-        let scanner = null;
         if (scannerModal) {
             // Need a slight delay to ensure the DOM element exists
-            setTimeout(() => {
-                scanner = new Html5QrcodeScanner(
+            const timeout = setTimeout(() => {
+                const scanner = new Html5QrcodeScanner(
                     "cashier-barcode-reader",
                     { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
                     /* verbose= */ false
@@ -412,15 +416,18 @@ export default function CashierPage() {
                 });
                 scannerRef.current = scanner;
             }, 100);
-        }
 
-        return () => {
-            if (scanner) {
-                scanner.clear().catch(error => {
-                    console.error("Failed to clear html5QrcodeScanner. ", error);
-                });
-            }
-        };
+            return () => {
+                clearTimeout(timeout);
+                // FIX: use scannerRef.current so cleanup always gets the right instance
+                if (scannerRef.current) {
+                    scannerRef.current.clear().catch(error => {
+                        console.error("Failed to clear html5QrcodeScanner. ", error);
+                    });
+                    scannerRef.current = null;
+                }
+            };
+        }
     }, [scannerModal, handleScanSuccess]);
 
     const saveTransactionToDB = async (paymentMethod = 'cash') => {
@@ -450,21 +457,25 @@ export default function CashierPage() {
                 await enqueueOfflineTransaction(payload);
 
                 // Optimistically clear cart visually and pretend success
-                setTransactionSuccessData({
+                const offlineSuccessData = {
                     storeName: user?.store_name,
+                    kasirName: user?.full_name, // FIX: send logged-in cashier name
                     receiptHeader: user?.receipt_header,
                     receiptFooter: user?.receipt_footer,
                     customerName: customers.find(c => c.id.toString() === selectedCustomerId)?.name || '',
                     invoiceNumber,
                     items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
                     totalAmount: finalAmount,
+                    taxAmount: taxAmount, // FIX: include taxAmount for offline receipt
                     totalItems,
                     paymentMethod,
                     paidAmount: isCash ? parseInt(paidAmount || '0') : finalAmount,
                     change: isCash ? parseInt(paidAmount || '0') - finalAmount : 0,
                     createdAt: new Date(),
                     isOffline: true
-                });
+                };
+                setTransactionSuccessData(offlineSuccessData);
+                lastCheckoutRef.current = offlineSuccessData; // FIX: fill ref for print/WA
 
                 // Adjust local state stock visually so user can't double-sell offline 
                 const updatedProds = products.map(p => {
@@ -488,21 +499,25 @@ export default function CashierPage() {
             // ONLINE SAVING 
             await processSupabaseCheckout(payload);
 
-            setTransactionSuccessData({
+            const successData = {
                 storeName: user?.store_name,
+                kasirName: user?.full_name, // FIX: send logged-in cashier name
                 receiptHeader: user?.receipt_header,
                 receiptFooter: user?.receipt_footer,
                 customerName: customers.find(c => c.id.toString() === selectedCustomerId)?.name || '',
                 invoiceNumber,
                 items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
                 totalAmount: finalAmount,
+                taxAmount: taxAmount, // FIX: include taxAmount so receipt shows PPN
                 totalItems,
                 paymentMethod,
                 paidAmount: isCash ? parseInt(paidAmount || '0') : finalAmount,
                 change: isCash ? parseInt(paidAmount || '0') - finalAmount : 0,
                 createdAt: new Date(),
                 isOffline: false
-            });
+            };
+            setTransactionSuccessData(successData);
+            lastCheckoutRef.current = successData; // FIX: fill ref so print/WA buttons work
 
             setLastInvoice(invoiceNumber);
             clearCart();
@@ -525,7 +540,7 @@ export default function CashierPage() {
             await saveTransactionToDB(paymentMethod);
         } catch (err) {
             console.error('Checkout error:', err);
-            alert('Gagal memproses transaksi: ' + err.message);
+            toast.error('Gagal memproses transaksi: ' + err.message);
         } finally {
             setProcessing(false);
         }

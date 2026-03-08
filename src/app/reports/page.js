@@ -46,33 +46,26 @@ export default function ReportsPage() {
     const [transactionItems, setTransactionItems] = useState([]);
     const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const PAGE_SIZE = 50;
+    const [currentPage, setCurrentPage] = useState(1);
 
     const loadReport = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
-            const [txRes, txItemsRes, expRes] = await Promise.all([
+            const fromISO = dayjs(dateFrom).startOf('day').toISOString();
+            const toISO = dayjs(dateTo).endOf('day').toISOString();
+
+            // FIX: Fetch transactions and expenses in parallel (no nested subquery)
+            const [txRes, expRes] = await Promise.all([
                 supabase
                     .from('transactions')
                     .select('*')
                     .eq('user_id', user.id)
                     .eq('status', 'completed')
-                    .gte('created_at', dayjs(dateFrom).startOf('day').toISOString())
-                    .lte('created_at', dayjs(dateTo).endOf('day').toISOString())
+                    .gte('created_at', fromISO)
+                    .lte('created_at', toISO)
                     .order('created_at', { ascending: true }),
-                // also fetch transaction_items to calculate COGS
-                supabase
-                    .from('transaction_items')
-                    .select('transaction_id, quantity, cost_price')
-                    .in('transaction_id', (
-                        await supabase
-                            .from('transactions')
-                            .select('id')
-                            .eq('user_id', user.id)
-                            .eq('status', 'completed')
-                            .gte('created_at', dayjs(dateFrom).startOf('day').toISOString())
-                            .lte('created_at', dayjs(dateTo).endOf('day').toISOString())
-                    ).data?.map(t => t.id) || []),
                 supabase
                     .from('expenses')
                     .select('*')
@@ -81,9 +74,21 @@ export default function ReportsPage() {
                     .lte('expense_date', dayjs(dateTo).format('YYYY-MM-DD'))
             ]);
 
-            setTransactions(txRes.data || []);
-            setTransactionItems(txItemsRes.data || []);
+            const txData = txRes.data || [];
+            setTransactions(txData);
             setExpenses(expRes.data || []);
+
+            // Fetch transaction_items only if there are transactions to avoid empty IN clause
+            if (txData.length > 0) {
+                const txIds = txData.map(t => t.id);
+                const { data: itemsData } = await supabase
+                    .from('transaction_items')
+                    .select('transaction_id, quantity, cost_price')
+                    .in('transaction_id', txIds);
+                setTransactionItems(itemsData || []);
+            } else {
+                setTransactionItems([]);
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -241,7 +246,7 @@ export default function ReportsPage() {
                     <Button
                         variant="secondary"
                         icon={Download}
-                        onClick={() => exportTransactionsPDF(transactions, dateFrom, dateTo, user?.store_name)}
+                        onClick={() => exportTransactionsPDF(transactions, dateFrom, dateTo, user?.store_name, user?.phone)}
                         disabled={transactions.length === 0}
                     >
                         PDF

@@ -5,7 +5,7 @@ import { formatRupiah, formatDateTime } from '@/lib/utils';
 /**
  * Generate receipt HTML and open print dialog
  */
-export function printReceipt({ storeName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, taxAmount, createdAt, receiptHeader, receiptFooter }) {
+export function printReceipt({ storeName, kasirName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, taxAmount, createdAt, receiptHeader, receiptFooter }) {
   const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
 
   const receiptHTML = `
@@ -65,7 +65,7 @@ export function printReceipt({ storeName, invoiceNumber, customerName, items, to
   </div>` : ''}
   <div class="row">
     <span>Kasir:</span>
-    <span>Admin</span>
+    <span>${kasirName || storeName || 'Admin'}</span>
   </div>
 
   <div class="double-divider"></div>
@@ -134,7 +134,7 @@ export function printReceipt({ storeName, invoiceNumber, customerName, items, to
 /**
  * Share receipt via WhatsApp (text version)
  */
-export function shareReceiptWhatsApp({ storeName, invoiceNumber, customerName, items, totalAmount, taxAmount, paymentMethod, createdAt, receiptHeader, receiptFooter }) {
+export function shareReceiptWhatsApp({ storeName, kasirName, invoiceNumber, customerName, items, totalAmount, taxAmount, paymentMethod, createdAt, receiptHeader, receiptFooter }) {
   const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
 
   let text = `🧾 *STRUK PEMBELIAN*\n`;

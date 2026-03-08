@@ -24,9 +24,11 @@ import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
 
 export default function SettingsPage() {
     const { user } = useAuthStore();
+    const toast = useToast();
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [profile, setProfile] = useState({
@@ -87,9 +89,10 @@ export default function SettingsPage() {
             if (error) throw error;
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
+            toast.success('Profil berhasil disimpan!');
         } catch (err) {
             console.error(err);
-            alert('Gagal menyimpan profil: ' + err.message);
+            toast.error('Gagal menyimpan profil: ' + err.message);
         } finally {
             setSaving(false);
         }
@@ -123,9 +126,10 @@ export default function SettingsPage() {
             setCashierForm({ email: '', password: '', full_name: '' });
             setAddCashierModal(false);
             loadCashiers();
+            toast.success('Akun kasir berhasil dibuat!');
         } catch (err) {
             console.error(err);
-            alert('Gagal menambah kasir: ' + err.message);
+            toast.error('Gagal menambah kasir: ' + err.message);
         } finally {
             setAddingCashier(false);
         }
@@ -133,12 +137,33 @@ export default function SettingsPage() {
 
     const handleDeleteCashier = async (cashierId) => {
         try {
-            await supabase.from('users').delete().eq('id', cashierId);
+            // Delete from users table
+            const { error: dbError } = await supabase.from('users').delete().eq('id', cashierId);
+            if (dbError) throw dbError;
+
+            // Also delete from Supabase Auth so the cashier can no longer login
+            // This requires a server-side API call since clients can't delete auth users
+            try {
+                const { data: sessionData } = await supabase.auth.getSession();
+                await fetch('/api/auth/delete-user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionData?.session?.access_token}`,
+                    },
+                    body: JSON.stringify({ userId: cashierId }),
+                });
+            } catch (authErr) {
+                // Non-fatal: user is deleted from our DB, auth cleanup is best-effort
+                console.warn('Could not delete from Auth (user may still be able to login):', authErr);
+            }
+
             setDeleteConfirm(null);
             loadCashiers();
+            toast.success('Akun kasir berhasil dihapus.');
         } catch (err) {
             console.error(err);
-            alert('Gagal menghapus kasir: ' + err.message);
+            toast.error('Gagal menghapus kasir: ' + err.message);
         }
     };
 

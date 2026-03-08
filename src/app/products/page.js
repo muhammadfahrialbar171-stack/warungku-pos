@@ -25,13 +25,17 @@ import EmptyState from '@/components/ui/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatRupiah, cn } from '@/lib/utils';
+import { useToast } from '@/components/ui/Toast';
+import { useDebounce } from '@/hooks/useDebounce';
 import Papa from 'papaparse';
 
 export default function ProductsPage() {
     const { user } = useAuthStore();
+    const toast = useToast();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [search, setSearch] = useState('');
+    const debouncedSearch = useDebounce(search, 300);
     const [filterCategory, setFilterCategory] = useState('all');
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
@@ -76,8 +80,8 @@ export default function ProductsPage() {
     useEffect(() => { loadData(); }, [loadData]);
 
     const filtered = products.filter((p) => {
-        const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) ||
-            (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()));
+        const matchSearch = p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            (p.sku && p.sku.toLowerCase().includes(debouncedSearch.toLowerCase()));
         const matchCat = filterCategory === 'all' || p.category_id === parseInt(filterCategory);
         return matchSearch && matchCat;
     });
@@ -131,7 +135,7 @@ export default function ProductsPage() {
         const file = e.target.files?.[0];
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) {
-            alert('Ukuran file maksimal 5MB');
+            toast.warning('Ukuran file maksimal 5MB');
             return;
         }
         setImageFile(file);
@@ -219,14 +223,15 @@ export default function ProductsPage() {
 
             // Warn user if schedule data was lost
             if (!savedWithSchedule && (form.discount_start || form.discount_end)) {
-                alert('Produk berhasil disimpan, namun jadwal diskon belum bisa disimpan karena kolom belum tersedia di database. Hubungi admin untuk menambahkan kolom discount_start & discount_end.');
+                toast.warning('Produk disimpan, namun jadwal diskon belum tersedia di database.');
             }
 
             setModalOpen(false);
             loadData();
+            toast.success(editProduct ? 'Produk berhasil diperbarui!' : 'Produk berhasil ditambahkan!');
         } catch (err) {
             console.error(err);
-            alert('Gagal menyimpan produk: ' + err.message);
+            toast.error('Gagal menyimpan produk: ' + err.message);
         } finally {
             setSaving(false);
             setUploadingImage(false);
@@ -272,7 +277,7 @@ export default function ProductsPage() {
                 setCsvData(results.data);
             },
             error: () => {
-                alert('Gagal membaca file CSV');
+                toast.error('Gagal membaca file CSV');
             },
         });
     };
@@ -291,7 +296,7 @@ export default function ProductsPage() {
                 is_active: true,
             })).filter((r) => r.name && r.price > 0);
 
-            if (rows.length === 0) { alert('Tidak ada data valid untuk diimport'); setImporting(false); return; }
+            if (rows.length === 0) { toast.warning('Tidak ada data valid untuk diimport'); setImporting(false); return; }
 
             const { error } = await supabase.from('products').insert(rows);
             if (error) throw error;
@@ -299,10 +304,10 @@ export default function ProductsPage() {
             setCsvData([]);
             setImportModal(false);
             loadData();
-            alert(`Berhasil import ${rows.length} produk!`);
+            toast.success(`Berhasil import ${rows.length} produk!`);
         } catch (err) {
             console.error(err);
-            alert('Gagal import: ' + err.message);
+            toast.error('Gagal import: ' + err.message);
         } finally {
             setImporting(false);
         }
