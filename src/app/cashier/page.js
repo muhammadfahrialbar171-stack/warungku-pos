@@ -115,20 +115,14 @@ export default function CashierPage() {
                 };
 
                 try {
-                    const { supabase } = await import('@/lib/supabase');
-                    const { data: userData } = await supabase.auth.getUser();
+                    const { supabase: helperSb } = await import('@/lib/supabase');
+                    const { data: userData } = await helperSb.auth.getUser();
                     if (!userData.user) continue;
 
-                    const res = await fetch('/api/transactions', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ...payload, user_id: userData.user.id })
-                    });
-
-                    if (res.ok) {
-                        await removeTransactionFromQueue(tx.temp_id);
-                        successCount++;
-                    }
+                    // Execute Supabase checkout logic directly
+                    await processSupabaseCheckout({ ...payload, user_id: userData.user.id });
+                    await removeTransactionFromQueue(tx.temp_id);
+                    successCount++;
                 } catch (e) {
                     console.error('Failed to sync queue item', tx.temp_id, e);
                 }
@@ -253,6 +247,77 @@ export default function CashierPage() {
     useEffect(() => {
         loadData();
     }, [loadData]);
+
+    const processSupabaseCheckout = async (payload) => {
+        const txPayload = {
+            user_id: payload.user_id,
+            invoice_number: payload.invoiceNumber,
+            subtotal: payload.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+            discount_amount: payload.txDiscount || 0,
+            total_amount: payload.totalAmount,
+            total_items: payload.items.reduce((sum, item) => sum + item.quantity, 0),
+            payment_method: payload.paymentMethod,
+            status: 'completed',
+            customer_id: payload.customerId || null,
+        };
+
+        let { data: transaction, error: txError } = await supabase
+            .from('transactions')
+            .insert(txPayload)
+            .select()
+            .single();
+
+        if (txError && typeof txError.message === 'string' && txError.message.includes('customer_id')) {
+            delete txPayload.customer_id;
+            const retry = await supabase.from('transactions').insert(txPayload).select().single();
+            transaction = retry.data;
+            txError = retry.error;
+        }
+        if (txError) throw txError;
+
+        const txItems = payload.items.map((item) => ({
+            transaction_id: transaction.id,
+            product_id: item.product_id || item.id,
+            product_name: item.name || item.product_name,
+            quantity: item.quantity,
+            price: item.price,
+            cost_price: item.cost_price || item.costPrice || 0,
+            subtotal: item.price * item.quantity,
+        }));
+
+        const { error: itemsError } = await supabase.from('transaction_items').insert(txItems);
+        if (itemsError) throw itemsError;
+
+        for (const item of payload.items) {
+            const { data: currentProduct } = await supabase.from('products').select('stock').eq('id', item.product_id || item.id).single();
+            if (currentProduct) {
+                const newStock = currentProduct.stock - item.quantity;
+                await supabase.from('products').update({ stock: newStock, updated_at: new Date().toISOString() }).eq('id', item.product_id || item.id);
+                // Also update local state
+                const currentLocalProd = products.find(p => p.id === (item.product_id || item.id));
+                if (currentLocalProd) currentLocalProd.stock = newStock;
+
+                await supabase.from('stock_history').insert({
+                    product_id: item.product_id || item.id,
+                    user_id: payload.user_id,
+                    type: 'sale',
+                    quantity: -item.quantity,
+                    stock_before: currentProduct.stock,
+                    stock_after: newStock,
+                    notes: `Penjualan - ${payload.invoiceNumber}`,
+                });
+            }
+        }
+
+        const earnedPoints = Math.floor(payload.totalAmount / 10000);
+        if (payload.customerId && earnedPoints > 0) {
+            const { data: customer } = await supabase.from('customers').select('total_points').eq('id', payload.customerId).single();
+            if (customer) {
+                await supabase.from('customers').update({ total_points: (customer.total_points || 0) + earnedPoints }).eq('id', payload.customerId);
+            }
+        }
+        return true;
+    };
 
     // Keyboard shortcut
     useEffect(() => {
@@ -410,14 +475,8 @@ export default function CashierPage() {
                 return;
             }
 
-            // ONLINE SAVING - direct API hit (refactoring away from client-side direct supabase call to use API pattern like previous midtrans mockup)
-            const res = await fetch('/api/transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) throw new Error('Gagal memproses transaksi API');
+            // ONLINE SAVING 
+            await processSupabaseCheckout(payload);
 
             setTransactionSuccessData({
                 storeName: user?.store_name,
