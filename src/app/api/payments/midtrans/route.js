@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 
 // Create Snap API instance
 const snap = new midtransClient.Snap({
-    isProduction: false, // Set to true if deploying to production
+    isProduction: true, // Set to true if deploying to production
     serverKey: process.env.MIDTRANS_SERVER_KEY || 'SB-Mid-server-MOCK-KEY',
 });
 

@@ -64,9 +64,9 @@ export default function CashierPage() {
 
     // Initialize Midtrans Snap SDK
     useEffect(() => {
-        const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
+        // const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
         // Use production url if you have production keys
-        // const snapScript = "https://app.midtrans.com/snap/snap.js";
+        const snapScript = "https://app.midtrans.com/snap/snap.js";
         const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY;
 
         if (clientKey) {
