@@ -18,9 +18,9 @@ import {
     Tag,
     ScanLine,
     Users,
-    PauseCircle,
     PlayCircle,
     Clock,
+    History,
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { printReceipt, shareReceiptWhatsApp } from '@/lib/receipt';
@@ -68,6 +68,9 @@ export default function CashierPage() {
     const [isOnline, setIsOnline] = useState(true);
     const [syncing, setSyncing] = useState(false);
     const [transactionSuccessData, setTransactionSuccessData] = useState(null);
+
+    // Tax Settings
+    const [taxRate, setTaxRate] = useState(0);
 
     // Listen to network status
     useEffect(() => {
@@ -210,16 +213,18 @@ export default function CashierPage() {
         try {
             if (navigator.onLine) {
                 // Fetch from Supabase
-                const [productsRes, categoriesRes, customersRes] = await Promise.all([
+                const [productsRes, categoriesRes, customersRes, userRes] = await Promise.all([
                     supabase.from('products').select('*').eq('user_id', user.id).eq('is_active', true).order('name'),
                     supabase.from('categories').select('*').eq('user_id', user.id).order('name'),
-                    supabase.from('customers').select('*').eq('user_id', user.id).order('name')
+                    supabase.from('customers').select('*').eq('user_id', user.id).order('name'),
+                    supabase.from('users').select('tax_rate').eq('id', user.id).single()
                 ]);
 
                 if (productsRes.error) throw productsRes.error;
                 setProducts(productsRes.data || []);
                 setCategories(categoriesRes.data || []);
                 setCustomers(customersRes.data || []);
+                if (userRes.data?.tax_rate) setTaxRate(parseFloat(userRes.data.tax_rate));
 
                 // Cache for offline
                 saveProductsOffline(productsRes.data || []);
@@ -254,6 +259,7 @@ export default function CashierPage() {
             invoice_number: payload.invoiceNumber,
             subtotal: payload.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
             discount_amount: payload.txDiscount || 0,
+            tax_amount: payload.taxAmount || 0,
             total_amount: payload.totalAmount,
             total_items: payload.items.reduce((sum, item) => sum + item.quantity, 0),
             payment_method: payload.paymentMethod,
@@ -358,7 +364,11 @@ export default function CashierPage() {
     const txDiscountAmount = txDiscountType === 'percentage'
         ? Math.round(totalAmount * parseInt(txDiscount || '0') / 100)
         : parseInt(txDiscount || '0');
-    const finalAmount = Math.max(0, totalAmount - txDiscountAmount);
+
+    // Tax Calculation
+    const taxAmount = Math.round((totalAmount - txDiscountAmount) * (taxRate / 100));
+
+    const finalAmount = Math.max(0, totalAmount - txDiscountAmount + taxAmount);
     const change = parseInt(paidAmount || '0') - finalAmount;
 
     // Handle Barcode Scan Success
@@ -673,33 +683,23 @@ export default function CashierPage() {
                                 )}
                             </div>
                             <div className="flex items-center gap-1">
-                                {items.length > 0 && (
-                                    <button
-                                        onClick={holdCurrentBill}
-                                        className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-amber-500/10"
-                                        title="Tahan pesanan (F8)"
-                                    >
-                                        <PauseCircle size={14} />
-                                        Hold
-                                    </button>
-                                )}
                                 {heldBills.length > 0 && (
                                     <button
                                         onClick={() => setHoldModal(true)}
-                                        className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-emerald-500/10 relative"
-                                        title="Lihat pesanan tertahan"
+                                        className="flex items-center gap-1 text-xs text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
+                                        title="Daftar Hold"
                                     >
-                                        <PlayCircle size={14} />
-                                        Recall
-                                        <span className="ml-0.5 w-4 h-4 bg-emerald-500 rounded-full text-[10px] text-white flex items-center justify-center">{heldBills.length}</span>
+                                        <History size={14} />
+                                        Hold ({heldBills.length})
                                     </button>
                                 )}
                                 {items.length > 0 && (
                                     <button
                                         onClick={clearCart}
-                                        className="text-xs text-slate-500 hover:text-red-400 transition-colors cursor-pointer px-2 py-1"
+                                        className="text-red-400 hover:bg-red-400/10 p-2 rounded-lg transition-colors cursor-pointer"
+                                        title="Kosongkan Keranjang"
                                     >
-                                        Hapus
+                                        <Trash2 size={16} />
                                     </button>
                                 )}
                             </div>
@@ -789,23 +789,40 @@ export default function CashierPage() {
                             </div>
 
                             {txDiscountAmount > 0 && (
-                                <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center justify-between text-sm mt-1">
                                     <span className="text-amber-400">Diskon</span>
                                     <span className="text-amber-400">-{formatRupiah(txDiscountAmount)}</span>
                                 </div>
                             )}
 
-                            <div className="border-t border-slate-700 pt-2 flex items-center justify-between">
+                            {taxAmount > 0 && (
+                                <div className="flex items-center justify-between text-sm mt-1">
+                                    <span className="text-slate-400">Pajak (PPN {taxRate}%)</span>
+                                    <span className="text-slate-300">+{formatRupiah(taxAmount)}</span>
+                                </div>
+                            )}
+
+                            <div className="border-t border-slate-700 pt-2 flex items-center justify-between mb-4">
                                 <span className="text-white font-medium">Total</span>
                                 <span className="text-xl font-bold text-white">{formatRupiah(finalAmount)}</span>
                             </div>
-                            <Button
-                                size="lg"
-                                className="w-full text-base"
-                                onClick={() => setCheckoutModal(true)}
-                            >
-                                Bayar (F9)
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="secondary"
+                                    className="px-3 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50"
+                                    onClick={holdCurrentBill}
+                                    title="Tahan Pesanan (Hold Bill)"
+                                >
+                                    <History size={18} />
+                                </Button>
+                                <Button
+                                    size="lg"
+                                    className="flex-1 text-base"
+                                    onClick={() => setCheckoutModal(true)}
+                                >
+                                    Bayar (F9)
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -831,6 +848,12 @@ export default function CashierPage() {
                                     <span className="text-amber-400">-{formatRupiah(txDiscountAmount)}</span>
                                 </div>
                             </>
+                        )}
+                        {taxAmount > 0 && (
+                            <div className="flex justify-between text-sm mb-2">
+                                <span className="text-slate-400">Pajak (PPN {taxRate}%)</span>
+                                <span className="text-white">+{formatRupiah(taxAmount)}</span>
+                            </div>
                         )}
                         <div className="flex justify-between">
                             <span className="text-slate-400">Total Bayar</span>

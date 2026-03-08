@@ -5,7 +5,7 @@ import { formatRupiah, formatDateTime } from '@/lib/utils';
 /**
  * Generate receipt HTML and open print dialog
  */
-export function printReceipt({ storeName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, createdAt, receiptHeader, receiptFooter }) {
+export function printReceipt({ storeName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, taxAmount, createdAt, receiptHeader, receiptFooter }) {
   const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
 
   const receiptHTML = `
@@ -86,6 +86,11 @@ export function printReceipt({ storeName, invoiceNumber, customerName, items, to
     <span>Total Item:</span>
     <span>${totalItems} item</span>
   </div>
+  ${taxAmount > 0 ? `
+  <div class="row">
+    <span>Pajak (PPN):</span>
+    <span>+${formatRupiah(taxAmount)}</span>
+  </div>` : ''}
   <div class="total-row">
     <span>TOTAL:</span>
     <span>${formatRupiah(totalAmount)}</span>
@@ -129,7 +134,7 @@ export function printReceipt({ storeName, invoiceNumber, customerName, items, to
 /**
  * Share receipt via WhatsApp (text version)
  */
-export function shareReceiptWhatsApp({ storeName, invoiceNumber, customerName, items, totalAmount, paymentMethod, createdAt, receiptHeader, receiptFooter }) {
+export function shareReceiptWhatsApp({ storeName, invoiceNumber, customerName, items, totalAmount, taxAmount, paymentMethod, createdAt, receiptHeader, receiptFooter }) {
   const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
 
   let text = `🧾 *STRUK PEMBELIAN*\n`;
@@ -149,6 +154,9 @@ export function shareReceiptWhatsApp({ storeName, invoiceNumber, customerName, i
   });
 
   text += `\n━━━━━━━━━━━━━━━━━━\n`;
+  if (taxAmount > 0) {
+    text += `Pajak PPN: +${formatRupiah(taxAmount)}\n`;
+  }
   text += `*TOTAL: ${formatRupiah(totalAmount)}*\n`;
   text += `Bayar: ${paymentLabel}\n`;
   text += `━━━━━━━━━━━━━━━━━━\n`;
