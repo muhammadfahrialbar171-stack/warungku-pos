@@ -15,6 +15,18 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatRupiah, formatDate } from '@/lib/utils';
 import dayjs from 'dayjs';
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Filler,
+    Tooltip,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip);
 
 export default function DashboardPage() {
     const { user } = useAuthStore();
@@ -26,6 +38,7 @@ export default function DashboardPage() {
     });
     const [topProducts, setTopProducts] = useState([]);
     const [recentTransactions, setRecentTransactions] = useState([]);
+    const [weeklyData, setWeeklyData] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const loadDashboard = useCallback(async () => {
@@ -35,6 +48,7 @@ export default function DashboardPage() {
         try {
             const today = dayjs().startOf('day').toISOString();
             const monthStart = dayjs().startOf('month').toISOString();
+            const weekStart = dayjs().subtract(6, 'day').startOf('day').toISOString();
 
             // Today's transactions
             const { data: todayTx } = await supabase
@@ -56,6 +70,32 @@ export default function DashboardPage() {
 
             const monthSales = monthTx?.reduce((sum, t) => sum + t.total_amount, 0) || 0;
 
+            // 7-day sales data for chart
+            const { data: weekTx } = await supabase
+                .from('transactions')
+                .select('total_amount, created_at')
+                .eq('user_id', user.id)
+                .gte('created_at', weekStart)
+                .eq('status', 'completed');
+
+            // Group by day
+            const dailyMap = {};
+            for (let i = 6; i >= 0; i--) {
+                const day = dayjs().subtract(i, 'day').format('YYYY-MM-DD');
+                dailyMap[day] = 0;
+            }
+            (weekTx || []).forEach((tx) => {
+                const day = dayjs(tx.created_at).format('YYYY-MM-DD');
+                if (dailyMap[day] !== undefined) {
+                    dailyMap[day] += tx.total_amount;
+                }
+            });
+            setWeeklyData(Object.entries(dailyMap).map(([date, amount]) => ({
+                label: dayjs(date).format('dd'),
+                fullDate: dayjs(date).format('DD MMM'),
+                amount,
+            })));
+
             // Total products
             const { count: productCount } = await supabase
                 .from('products')
@@ -70,17 +110,7 @@ export default function DashboardPage() {
                 monthSales,
             });
 
-            // Top products (this month)
-            const { data: topItems } = await supabase
-                .from('transaction_items')
-                .select('product_name, quantity, subtotal, product_id')
-                .in(
-                    'transaction_id',
-                    (monthTx || []).map(() => '')  // fallback
-                );
-
-            // Simplified: get top products from transaction_items via RPC or manual
-            // For now, we'll query products sorted by stock changes
+            // Top products
             const { data: products } = await supabase
                 .from('products')
                 .select('*')
@@ -110,6 +140,71 @@ export default function DashboardPage() {
     useEffect(() => {
         loadDashboard();
     }, [loadDashboard]);
+
+    // Chart config
+    const chartData = {
+        labels: weeklyData.map((d) => d.label),
+        datasets: [
+            {
+                data: weeklyData.map((d) => d.amount),
+                borderColor: 'rgba(99, 102, 241, 1)',
+                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                borderWidth: 2.5,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                pointBorderColor: '#1e293b',
+                pointBorderWidth: 2,
+                pointHoverRadius: 6,
+            },
+        ],
+    };
+
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#1e293b',
+                borderColor: '#475569',
+                borderWidth: 1,
+                titleColor: '#f1f5f9',
+                bodyColor: '#94a3b8',
+                cornerRadius: 10,
+                padding: 10,
+                callbacks: {
+                    title: (items) => weeklyData[items[0]?.dataIndex]?.fullDate || '',
+                    label: (item) => `Penjualan: ${formatRupiah(item.raw)}`,
+                },
+            },
+        },
+        scales: {
+            x: {
+                grid: { display: false },
+                ticks: { color: '#64748b', font: { size: 11 } },
+            },
+            y: {
+                grid: { color: 'rgba(71, 85, 105, 0.15)' },
+                ticks: {
+                    color: '#64748b',
+                    font: { size: 10 },
+                    callback: (v) => {
+                        if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
+                        if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
+                        return v;
+                    },
+                },
+            },
+        },
+    };
+
+    // Yesterday comparison
+    const yesterdaySales = weeklyData.length >= 2 ? weeklyData[weeklyData.length - 2].amount : 0;
+    const todayTrend = yesterdaySales > 0
+        ? Math.round(((stats.todaySales - yesterdaySales) / yesterdaySales) * 100)
+        : 0;
 
     if (loading) {
         return (
@@ -142,6 +237,8 @@ export default function DashboardPage() {
                     value={formatRupiah(stats.todaySales)}
                     icon={DollarSign}
                     color="indigo"
+                    trend={todayTrend !== 0 ? Math.abs(todayTrend) : undefined}
+                    trendUp={todayTrend > 0}
                 />
                 <StatCard
                     title="Transaksi Hari Ini"
@@ -162,6 +259,22 @@ export default function DashboardPage() {
                     color="rose"
                 />
             </div>
+
+            {/* 7-day Chart */}
+            <Card>
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 className="text-lg font-semibold text-white">Tren Penjualan</h3>
+                        <p className="text-xs text-slate-500">7 hari terakhir</p>
+                    </div>
+                    <Badge variant="primary">
+                        {formatRupiah(weeklyData.reduce((s, d) => s + d.amount, 0))}
+                    </Badge>
+                </div>
+                <div className="h-52">
+                    <Line data={chartData} options={chartOptions} />
+                </div>
+            </Card>
 
             {/* Bottom Sections */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

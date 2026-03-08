@@ -27,6 +27,37 @@ body {
   color: #e2e8f0;
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* ===== Light Mode ===== */
+.light body {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.light ::-webkit-scrollbar-track {
+  background: #e2e8f0;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+}
+
+.light .skeleton {
+  background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #e2e8f0 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.light .glass {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(203, 213, 225, 0.5);
+}
+
+.light .glass-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(241, 245, 249, 0.95) 100%);
+  border: 1px solid rgba(203, 213, 225, 0.5);
 }
 
 /* ===== Scrollbar ===== */

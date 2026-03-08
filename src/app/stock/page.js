@@ -30,7 +30,7 @@ export default function StockPage() {
     const [saving, setSaving] = useState(false);
 
     const [form, setForm] = useState({
-        product_id: '', type: 'in', quantity: '', notes: '',
+        product_id: '', type: 'in', quantity: '', notes: '', supplier_name: '', purchase_price: '',
     });
 
     const loadData = useCallback(async () => {
@@ -77,9 +77,11 @@ export default function StockPage() {
                 stock_before: product.stock,
                 stock_after: newStock,
                 notes: form.notes || (form.type === 'in' ? 'Stok masuk' : 'Stok keluar'),
+                supplier_name: form.supplier_name || null,
+                purchase_price: form.purchase_price ? parseInt(form.purchase_price) : null,
             });
 
-            setForm({ product_id: '', type: 'in', quantity: '', notes: '' });
+            setForm({ product_id: '', type: 'in', quantity: '', notes: '', supplier_name: '', purchase_price: '' });
             setAdjustModal(false);
             loadData();
         } catch (err) {
@@ -154,7 +156,10 @@ export default function StockPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-white">{entry.products?.name}</p>
-                                    <p className="text-xs text-slate-500">{entry.notes}</p>
+                                    <p className="text-xs text-slate-500">
+                                        {entry.notes}
+                                        {entry.supplier_name && <span className="ml-1 text-indigo-400">• Supplier: {entry.supplier_name}</span>}
+                                    </p>
                                 </div>
                                 <div className="text-right">
                                     <p className={cn('text-sm font-bold', entry.quantity > 0 ? 'text-emerald-400' : 'text-red-400')}>
@@ -186,6 +191,12 @@ export default function StockPage() {
                         <Input label="Jumlah *" type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="0" min="1" />
                     </div>
                     <Textarea label="Catatan" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Alasan perubahan stok..." />
+                    {form.type === 'in' && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input label="Nama Supplier" value={form.supplier_name} onChange={(e) => setForm({ ...form, supplier_name: e.target.value })} placeholder="Opsional" />
+                            <Input label="Harga Beli/Unit" type="number" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: e.target.value })} placeholder="0" />
+                        </div>
+                    )}
                     <div className="flex gap-3 pt-2">
                         <Button variant="secondary" className="flex-1" onClick={() => setAdjustModal(false)}>Batal</Button>
                         <Button className="flex-1" onClick={handleAdjust} loading={saving}>Simpan</Button>

@@ -18,6 +18,9 @@ import {
     Tag,
     ScanLine,
     Users,
+    PauseCircle,
+    PlayCircle,
+    Clock,
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { printReceipt, shareReceiptWhatsApp } from '@/lib/receipt';
@@ -54,6 +57,52 @@ export default function CashierPage() {
     // Barcode Scanner State
     const [scannerModal, setScannerModal] = useState(false);
     const scannerRef = useRef(null);
+
+    // Hold Bill State
+    const [heldBills, setHeldBills] = useState([]);
+    const [holdModal, setHoldModal] = useState(false);
+
+    // Load held bills from localStorage
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('warungku_held_bills');
+            if (saved) setHeldBills(JSON.parse(saved));
+        } catch (e) { }
+    }, []);
+
+    const saveHeldBills = (bills) => {
+        setHeldBills(bills);
+        localStorage.setItem('warungku_held_bills', JSON.stringify(bills));
+    };
+
+    const holdCurrentBill = () => {
+        if (items.length === 0) return;
+        const bill = {
+            id: Date.now(),
+            items: items,
+            customerId: selectedCustomerId,
+            timestamp: new Date().toISOString(),
+            total: getTotal(),
+        };
+        const updated = [bill, ...heldBills].slice(0, 10);
+        saveHeldBills(updated);
+        clearCart();
+        setSelectedCustomerId('');
+    };
+
+    const recallBill = (bill) => {
+        clearCart();
+        bill.items.forEach((item) => addItem(item));
+        setSelectedCustomerId(bill.customerId || '');
+        const updated = heldBills.filter((b) => b.id !== bill.id);
+        saveHeldBills(updated);
+        setHoldModal(false);
+    };
+
+    const deleteHeldBill = (billId) => {
+        const updated = heldBills.filter((b) => b.id !== billId);
+        saveHeldBills(updated);
+    };
 
     const loadData = useCallback(async () => {
         if (!user) return;
@@ -429,14 +478,37 @@ export default function CashierPage() {
                                     <Badge variant="primary">{totalItems} item</Badge>
                                 )}
                             </div>
-                            {items.length > 0 && (
-                                <button
-                                    onClick={clearCart}
-                                    className="text-sm text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
-                                >
-                                    Hapus semua
-                                </button>
-                            )}
+                            <div className="flex items-center gap-1">
+                                {items.length > 0 && (
+                                    <button
+                                        onClick={holdCurrentBill}
+                                        className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-amber-500/10"
+                                        title="Tahan pesanan (F8)"
+                                    >
+                                        <PauseCircle size={14} />
+                                        Hold
+                                    </button>
+                                )}
+                                {heldBills.length > 0 && (
+                                    <button
+                                        onClick={() => setHoldModal(true)}
+                                        className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-emerald-500/10 relative"
+                                        title="Lihat pesanan tertahan"
+                                    >
+                                        <PlayCircle size={14} />
+                                        Recall
+                                        <span className="ml-0.5 w-4 h-4 bg-emerald-500 rounded-full text-[10px] text-white flex items-center justify-center">{heldBills.length}</span>
+                                    </button>
+                                )}
+                                {items.length > 0 && (
+                                    <button
+                                        onClick={clearCart}
+                                        className="text-xs text-slate-500 hover:text-red-400 transition-colors cursor-pointer px-2 py-1"
+                                    >
+                                        Hapus
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -731,6 +803,41 @@ export default function CashierPage() {
                     <Button className="w-full" onClick={() => setSuccessModal(false)}>
                         Transaksi Baru
                     </Button>
+                </div>
+            </Modal>
+
+            {/* Hold Bills Modal */}
+            <Modal isOpen={holdModal} onClose={() => setHoldModal(false)} title="Pesanan Tertahan" size="md">
+                <div className="space-y-3">
+                    {heldBills.length === 0 ? (
+                        <p className="text-sm text-slate-500 text-center py-4">Tidak ada pesanan yang ditahan</p>
+                    ) : (
+                        heldBills.map((bill) => (
+                            <div key={bill.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-700">
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white">{bill.items.length} produk — {formatRupiah(bill.total)}</p>
+                                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                                        <Clock size={12} />
+                                        {new Date(bill.timestamp).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => recallBill(bill)}
+                                        className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium transition-colors cursor-pointer"
+                                    >
+                                        Recall
+                                    </button>
+                                    <button
+                                        onClick={() => deleteHeldBill(bill.id)}
+                                        className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </Modal>
         </div>

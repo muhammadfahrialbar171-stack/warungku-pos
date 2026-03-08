@@ -15,6 +15,7 @@ import {
     Settings,
     Users,
     Wallet,
+    Barcode,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -28,6 +29,7 @@ const navItems = [
     { href: '/customers', label: 'Pelanggan', icon: Users },
     { href: '/expenses', label: 'Pengeluaran', icon: Wallet },
     { href: '/reports', label: 'Laporan', icon: BarChart3, ownerOnly: true },
+    { href: '/barcode', label: 'Barcode', icon: Barcode, ownerOnly: true },
     { href: '/settings', label: 'Pengaturan', icon: Settings },
 ];
 

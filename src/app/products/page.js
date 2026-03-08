@@ -13,6 +13,8 @@ import {
     Percent,
     Tag,
     X,
+    FileSpreadsheet,
+    Download,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -23,6 +25,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatRupiah, cn } from '@/lib/utils';
+import Papa from 'papaparse';
 
 export default function ProductsPage() {
     const { user } = useAuthStore();
@@ -41,9 +44,15 @@ export default function ProductsPage() {
     const [uploadingImage, setUploadingImage] = useState(false);
     const fileInputRef = useRef(null);
 
+    // CSV Import state
+    const [importModal, setImportModal] = useState(false);
+    const [csvData, setCsvData] = useState([]);
+    const [importing, setImporting] = useState(false);
+    const csvInputRef = useRef(null);
+
     const [form, setForm] = useState({
         name: '', sku: '', price: '', cost_price: '', stock: '', category_id: '', is_active: true,
-        discount: '', discount_type: 'percentage', image_url: '',
+        discount: '', discount_type: 'percentage', image_url: '', discount_start: '', discount_end: '',
     });
     const [categoryForm, setCategoryForm] = useState({ name: '' });
 
@@ -76,6 +85,12 @@ export default function ProductsPage() {
     // Calculate final price after discount
     const getDiscountedPrice = (product) => {
         if (!product.discount || product.discount <= 0) return product.price;
+        // Check scheduled discount
+        if (product.discount_start || product.discount_end) {
+            const now = new Date();
+            if (product.discount_start && new Date(product.discount_start) > now) return product.price;
+            if (product.discount_end && new Date(product.discount_end) < now) return product.price;
+        }
         if (product.discount_type === 'percentage') {
             return Math.round(product.price * (1 - product.discount / 100));
         }
@@ -84,7 +99,7 @@ export default function ProductsPage() {
 
     const openAddModal = () => {
         setEditProduct(null);
-        setForm({ name: '', sku: '', price: '', cost_price: '', stock: '', category_id: '', is_active: true, discount: '', discount_type: 'percentage', image_url: '' });
+        setForm({ name: '', sku: '', price: '', cost_price: '', stock: '', category_id: '', is_active: true, discount: '', discount_type: 'percentage', image_url: '', discount_start: '', discount_end: '' });
         setImageFile(null);
         setImagePreview(null);
         setModalOpen(true);
@@ -103,6 +118,8 @@ export default function ProductsPage() {
             discount: product.discount ? String(product.discount) : '',
             discount_type: product.discount_type || 'percentage',
             image_url: product.image_url || '',
+            discount_start: product.discount_start || '',
+            discount_end: product.discount_end || '',
         });
         setImageFile(null);
         setImagePreview(product.image_url || null);
@@ -163,6 +180,8 @@ export default function ProductsPage() {
                 is_active: form.is_active,
                 discount: form.discount ? parseInt(form.discount) : 0,
                 discount_type: form.discount_type,
+                discount_start: form.discount_start || null,
+                discount_end: form.discount_end || null,
                 image_url: imageUrl || null,
             };
 
@@ -211,6 +230,63 @@ export default function ProductsPage() {
         setForm({ ...form, image_url: '' });
     };
 
+    // CSV Import handlers
+    const handleCsvSelect = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+                setCsvData(results.data);
+            },
+            error: () => {
+                alert('Gagal membaca file CSV');
+            },
+        });
+    };
+
+    const handleCsvImport = async () => {
+        if (csvData.length === 0) return;
+        setImporting(true);
+        try {
+            const rows = csvData.map((row) => ({
+                user_id: user.id,
+                name: row['Nama Produk'] || row['name'] || '',
+                sku: row['SKU'] || row['sku'] || null,
+                price: parseInt(row['Harga Jual'] || row['price'] || '0'),
+                cost_price: parseInt(row['Harga Modal'] || row['cost_price'] || '0') || null,
+                stock: parseInt(row['Stok'] || row['stock'] || '0'),
+                is_active: true,
+            })).filter((r) => r.name && r.price > 0);
+
+            if (rows.length === 0) { alert('Tidak ada data valid untuk diimport'); setImporting(false); return; }
+
+            const { error } = await supabase.from('products').insert(rows);
+            if (error) throw error;
+
+            setCsvData([]);
+            setImportModal(false);
+            loadData();
+            alert(`Berhasil import ${rows.length} produk!`);
+        } catch (err) {
+            console.error(err);
+            alert('Gagal import: ' + err.message);
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    const downloadCsvTemplate = () => {
+        const csv = 'Nama Produk,SKU,Harga Jual,Harga Modal,Stok\nContoh Produk,SKU001,10000,8000,50';
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'template-produk.csv';
+        a.click();
+    };
+
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Header */}
@@ -220,6 +296,9 @@ export default function ProductsPage() {
                     <p className="text-slate-400 text-sm mt-1">Kelola produk toko Anda</p>
                 </div>
                 <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => setImportModal(true)}>
+                        <FileSpreadsheet size={16} /> Import CSV
+                    </Button>
                     <Button variant="secondary" size="sm" onClick={() => setCategoryModalOpen(true)}>
                         <Plus size={16} /> Kategori
                     </Button>
@@ -444,6 +523,28 @@ export default function ProductsPage() {
                                 </span>
                             </div>
                         )}
+                        {form.discount && parseInt(form.discount) > 0 && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="block text-xs font-medium text-slate-400">Mulai Diskon</label>
+                                    <input
+                                        type="date"
+                                        value={form.discount_start}
+                                        onChange={(e) => setForm({ ...form, discount_start: e.target.value })}
+                                        className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="block text-xs font-medium text-slate-400">Akhir Diskon</label>
+                                    <input
+                                        type="date"
+                                        value={form.discount_end}
+                                        onChange={(e) => setForm({ ...form, discount_end: e.target.value })}
+                                        className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex gap-3 pt-2">
@@ -475,6 +576,67 @@ export default function ProductsPage() {
                     <div className="flex gap-3">
                         <Button variant="secondary" className="flex-1" onClick={() => setDeleteConfirm(null)}>Batal</Button>
                         <Button variant="danger" className="flex-1" onClick={() => handleDelete(deleteConfirm.id)}>Hapus</Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* CSV Import Modal */}
+            <Modal isOpen={importModal} onClose={() => { setImportModal(false); setCsvData([]); }} title="Import Produk dari CSV" size="lg">
+                <div className="space-y-4">
+                    <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                        <p className="text-xs text-indigo-300">
+                            Format CSV: <strong>Nama Produk, SKU, Harga Jual, Harga Modal, Stok</strong>.
+                            Baris pertama harus berisi header kolom.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => csvInputRef.current?.click()}
+                            className="flex-1 px-4 py-3 border-2 border-dashed border-slate-600 hover:border-indigo-500/50 rounded-xl text-sm text-slate-400 hover:text-white transition-all cursor-pointer text-center"
+                        >
+                            <FileSpreadsheet size={20} className="mx-auto mb-1" />
+                            {csvData.length > 0 ? `${csvData.length} baris data siap` : 'Pilih file CSV'}
+                        </button>
+                        <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCsvSelect} className="hidden" />
+                        <button
+                            onClick={downloadCsvTemplate}
+                            className="flex items-center gap-1 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-sm text-slate-400 hover:text-white transition-colors cursor-pointer"
+                        >
+                            <Download size={16} />
+                            Template
+                        </button>
+                    </div>
+
+                    {csvData.length > 0 && (
+                        <div className="max-h-60 overflow-auto rounded-xl border border-slate-700">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-slate-800 border-b border-slate-700">
+                                        {Object.keys(csvData[0]).map((key) => (
+                                            <th key={key} className="px-3 py-2 text-left text-slate-400 font-medium">{key}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800">
+                                    {csvData.slice(0, 20).map((row, i) => (
+                                        <tr key={i} className="hover:bg-slate-800/30">
+                                            {Object.values(row).map((val, j) => (
+                                                <td key={j} className="px-3 py-2 text-slate-300">{val}</td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {csvData.length > 20 && <p className="text-xs text-slate-500 text-center py-2">... dan {csvData.length - 20} baris lainnya</p>}
+                        </div>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
+                        <Button variant="secondary" className="flex-1" onClick={() => { setImportModal(false); setCsvData([]); }}>Batal</Button>
+                        <Button className="flex-1" onClick={handleCsvImport} loading={importing} disabled={csvData.length === 0}>
+                            Import {csvData.length} Produk
+                        </Button>
                     </div>
                 </div>
             </Modal>

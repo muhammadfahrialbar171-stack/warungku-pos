@@ -19,6 +19,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatRupiah, formatDate, cn } from '@/lib/utils';
 import { exportTransactionsToExcel, exportDailySummaryToExcel } from '@/lib/export';
+import { exportTransactionsPDF, exportDailySummaryPDF } from '@/lib/pdf-export';
 import dayjs from 'dayjs';
 import {
     Chart as ChartJS,
@@ -188,14 +189,24 @@ export default function ReportsPage() {
                     <h1 className="text-2xl font-bold text-white">Laporan Penjualan</h1>
                     <p className="text-slate-400 text-sm mt-1">Analisis performa bisnis Anda</p>
                 </div>
-                <Button
-                    variant="secondary"
-                    icon={Download}
-                    onClick={() => exportTransactionsToExcel(transactions, `laporan-transaksi-${dateFrom}-${dateTo}`)}
-                    disabled={transactions.length === 0}
-                >
-                    Export Excel
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="secondary"
+                        icon={Download}
+                        onClick={() => exportTransactionsToExcel(transactions, `laporan-transaksi-${dateFrom}-${dateTo}`)}
+                        disabled={transactions.length === 0}
+                    >
+                        Excel
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        icon={Download}
+                        onClick={() => exportTransactionsPDF(transactions, dateFrom, dateTo, user?.store_name)}
+                        disabled={transactions.length === 0}
+                    >
+                        PDF
+                    </Button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -277,14 +288,24 @@ export default function ReportsPage() {
                 <Card>
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-semibold text-white">Ringkasan {period === 'daily' ? 'Harian' : 'Bulanan'}</h3>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={Download}
-                            onClick={() => exportDailySummaryToExcel(groupedData, labels, `ringkasan-${period}-${dateFrom}-${dateTo}`)}
-                        >
-                            Export
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={Download}
+                                onClick={() => exportDailySummaryToExcel(groupedData, labels, `ringkasan-${period}-${dateFrom}-${dateTo}`)}
+                            >
+                                Excel
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={Download}
+                                onClick={() => exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, user?.store_name)}
+                            >
+                                PDF
+                            </Button>
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
