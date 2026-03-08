@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { formatDateTime, formatRupiah, cn } from '@/lib/utils';
@@ -221,102 +221,103 @@ export default function CustomersPage() {
                                 </tr>
                             ) : (
                                 customers.map((customer) => (
-                                    <tr
-                                        key={customer.id}
-                                        className="hover:bg-slate-800/40 transition-colors duration-200 group"
-                                    >
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-white/5 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
-                                                    {customer.name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <button
-                                                        onClick={() => loadTxHistory(customer.id)}
-                                                        className="text-sm font-semibold text-white hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
-                                                    >
-                                                        {customer.name}
-                                                        {expandedCustomer === customer.id
-                                                            ? <ChevronUp size={14} className="text-indigo-400" />
-                                                            : <ChevronDown size={14} className="text-slate-500" />
-                                                        }
-                                                    </button>
-                                                    <p className="text-xs text-slate-500 mt-0.5">Klik untuk lihat riwayat</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 space-y-1">
-                                            <div className="flex items-center gap-2 text-sm text-slate-400">
-                                                <Phone size={14} className="text-emerald-400 flex-shrink-0" />
-                                                <span>{customer.phone || '-'}</span>
-                                            </div>
-                                            <div className="flex items-start gap-2 text-sm text-slate-400">
-                                                <MapPin size={14} className="text-rose-400 flex-shrink-0 mt-0.5" />
-                                                <span className="truncate max-w-[200px]">{customer.address || '-'}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <Badge variant="warning" className="flex items-center gap-1 w-max shadow-sm">
-                                                <Star size={12} className="fill-amber-400 text-amber-400" />
-                                                {customer.total_points || 0} Poin
-                                            </Badge>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm font-medium text-slate-500">
-                                            {formatDateTime(customer.created_at)}
-                                        </td>
-                                        {isOwner && (
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                                    <button
-                                                        onClick={() => openModal(customer)}
-                                                        className="p-2 rounded-xl bg-slate-700/50 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-400 transition-all cursor-pointer"
-                                                    >
-                                                        <Edit2 size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeleteModal({ isOpen: true, id: customer.id })}
-                                                        className="p-2 rounded-xl bg-slate-700/50 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 transition-all cursor-pointer"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                    <React.Fragment key={customer.id}>
+                                        <tr
+                                            className="hover:bg-slate-800/40 transition-colors duration-200 group"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-white/5 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
+                                                        {customer.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <button
+                                                            onClick={() => loadTxHistory(customer.id)}
+                                                            className="text-sm font-semibold text-white hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                                        >
+                                                            {customer.name}
+                                                            {expandedCustomer === customer.id
+                                                                ? <ChevronUp size={14} className="text-indigo-400" />
+                                                                : <ChevronDown size={14} className="text-slate-500" />
+                                                            }
+                                                        </button>
+                                                        <p className="text-xs text-slate-500 mt-0.5">Klik untuk lihat riwayat</p>
+                                                    </div>
                                                 </div>
                                             </td>
-                                        )}
-                                    </tr>
-                                    {/* Transaction History Expansion Row */ }
-                                    { expandedCustomer === customer.id && (
-                                        <tr className="bg-slate-800/30">
-                                            <td colSpan={isOwner ? 5 : 4} className="px-6 py-4">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    <ShoppingBag size={16} className="text-indigo-400" />
-                                                    <span className="text-sm font-semibold text-indigo-300">Riwayat Transaksi</span>
+                                            <td className="px-6 py-4 space-y-1">
+                                                <div className="flex items-center gap-2 text-sm text-slate-400">
+                                                    <Phone size={14} className="text-emerald-400 flex-shrink-0" />
+                                                    <span>{customer.phone || '-'}</span>
                                                 </div>
-                                                {txLoading[customer.id] ? (
-                                                    <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
-                                                        <Loader2 size={16} className="animate-spin" /> Memuat...
-                                                    </div>
-                                                ) : !txHistory[customer.id] || txHistory[customer.id].length === 0 ? (
-                                                    <p className="text-sm text-slate-500 py-2">Tidak ada riwayat transaksi.</p>
-                                                ) : (
-                                                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                                                        {txHistory[customer.id].map(tx => (
-                                                            <div key={tx.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl px-4 py-2.5 border border-white/5">
-                                                                <div>
-                                                                    <p className="text-sm font-medium text-white">{tx.invoice_number}</p>
-                                                                    <p className="text-xs text-slate-500">{formatDateTime(tx.created_at)}</p>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <p className="text-sm font-bold text-emerald-400">{formatRupiah(tx.total_amount)}</p>
-                                                                    <p className="text-xs text-slate-500 capitalize">{tx.payment_method}</p>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                <div className="flex items-start gap-2 text-sm text-slate-400">
+                                                    <MapPin size={14} className="text-rose-400 flex-shrink-0 mt-0.5" />
+                                                    <span className="truncate max-w-[200px]">{customer.address || '-'}</span>
+                                                </div>
                                             </td>
+                                            <td className="px-6 py-4">
+                                                <Badge variant="warning" className="flex items-center gap-1 w-max shadow-sm">
+                                                    <Star size={12} className="fill-amber-400 text-amber-400" />
+                                                    {customer.total_points || 0} Poin
+                                                </Badge>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-medium text-slate-500">
+                                                {formatDateTime(customer.created_at)}
+                                            </td>
+                                            {isOwner && (
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                                        <button
+                                                            onClick={() => openModal(customer)}
+                                                            className="p-2 rounded-xl bg-slate-700/50 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-400 transition-all cursor-pointer"
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeleteModal({ isOpen: true, id: customer.id })}
+                                                            className="p-2 rounded-xl bg-slate-700/50 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 transition-all cursor-pointer"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            )}
                                         </tr>
-                                    )}
-                            ))
+                                        {/* Transaction History Expansion Row */}
+                                        {expandedCustomer === customer.id && (
+                                            <tr className="bg-slate-800/30">
+                                                <td colSpan={isOwner ? 5 : 4} className="px-6 py-4">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <ShoppingBag size={16} className="text-indigo-400" />
+                                                        <span className="text-sm font-semibold text-indigo-300">Riwayat Transaksi</span>
+                                                    </div>
+                                                    {txLoading[customer.id] ? (
+                                                        <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
+                                                            <Loader2 size={16} className="animate-spin" /> Memuat...
+                                                        </div>
+                                                    ) : !txHistory[customer.id] || txHistory[customer.id].length === 0 ? (
+                                                        <p className="text-sm text-slate-500 py-2">Tidak ada riwayat transaksi.</p>
+                                                    ) : (
+                                                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                                            {txHistory[customer.id].map(tx => (
+                                                                <div key={tx.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl px-4 py-2.5 border border-white/5">
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-white">{tx.invoice_number}</p>
+                                                                        <p className="text-xs text-slate-500">{formatDateTime(tx.created_at)}</p>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="text-sm font-bold text-emerald-400">{formatRupiah(tx.total_amount)}</p>
+                                                                        <p className="text-xs text-slate-500 capitalize">{tx.payment_method}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
+                                ))
                             )}
                         </tbody>
                     </table>
