@@ -552,20 +552,20 @@ export default function CashierPage() {
 
                                         <div className="flex-1 min-h-0 flex flex-col justify-between">
                                             <div>
-                                                <p className="text-sm font-medium text-white line-clamp-2 leading-snug break-words" title={product.name}>{product.name}</p>
+                                                <p className="text-[13px] font-medium text-white line-clamp-2 leading-snug break-words" title={product.name}>{product.name}</p>
 
                                                 {/* Price with discount */}
                                                 {hasDiscount ? (
-                                                    <div className="mt-1.5 w-full">
-                                                        <p className="text-[14px] sm:text-[15px] font-bold text-emerald-400 tracking-tight break-all">{formatRupiah(discountedPrice)}</p>
-                                                        <p className="text-[11px] text-slate-500 line-through truncate">{formatRupiah(product.price)}</p>
+                                                    <div className="mt-1 w-full">
+                                                        <p className="text-[13px] sm:text-[14px] font-bold text-emerald-400 tracking-tight break-all">{formatRupiah(discountedPrice)}</p>
+                                                        <p className="text-[10px] text-slate-500 line-through truncate">{formatRupiah(product.price)}</p>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-[14px] sm:text-[15px] font-bold text-indigo-400 mt-1.5 tracking-tight w-full break-all">{formatRupiah(product.price)}</p>
+                                                    <p className="text-[13px] sm:text-[14px] font-bold text-indigo-400 mt-1 tracking-tight w-full break-all">{formatRupiah(product.price)}</p>
                                                 )}
                                             </div>
 
-                                            <div className="flex items-center justify-between mt-3">
+                                            <div className="flex items-center justify-between mt-2">
                                                 <Badge variant={product.stock <= 5 ? 'warning' : 'success'} className="text-[9px] px-1.5 py-0.5">
                                                     Stok: {product.stock}
                                                 </Badge>
