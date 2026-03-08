@@ -34,7 +34,7 @@ import { useCartStore } from '@/store/cartStore';
 import { formatRupiah, generateInvoice, cn } from '@/lib/utils';
 
 export default function CashierPage() {
-    const { user } = useAuthStore();
+    const { user, session } = useAuthStore();
     const { items, addItem, removeItem, incrementItem, decrementItem, clearCart, getTotal, getTotalItems } = useCartStore();
 
     const [products, setProducts] = useState([]);
@@ -61,6 +61,26 @@ export default function CashierPage() {
     // Hold Bill State
     const [heldBills, setHeldBills] = useState([]);
     const [holdModal, setHoldModal] = useState(false);
+
+    // Initialize Midtrans Snap SDK
+    useEffect(() => {
+        const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
+        // Use production url if you have production keys
+        // const snapScript = "https://app.midtrans.com/snap/snap.js";
+        const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY;
+
+        if (clientKey) {
+            const script = document.createElement("script");
+            script.src = snapScript;
+            script.setAttribute("data-client-key", clientKey);
+            script.async = true;
+            document.body.appendChild(script);
+
+            return () => {
+                document.body.removeChild(script);
+            };
+        }
+    }, []);
 
     // Load held bills from localStorage
     useEffect(() => {
@@ -241,105 +261,175 @@ export default function CashierPage() {
         try {
             const invoiceNumber = generateInvoice();
 
-            // Create transaction payload
-            const txPayload = {
-                user_id: user.id,
-                invoice_number: invoiceNumber,
-                subtotal: totalAmount,
-                discount_amount: txDiscountAmount,
-                total_amount: finalAmount,
-                total_items: totalItems,
-                payment_method: paymentMethod,
-                status: 'completed',
-                customer_id: selectedCustomerId || null,
+            // Function to save transaction to DB once paid
+            const saveTransactionToDB = async (finalPaymentMethod) => {
+                // Create transaction payload
+                const txPayload = {
+                    user_id: user.id,
+                    invoice_number: invoiceNumber,
+                    subtotal: totalAmount,
+                    discount_amount: txDiscountAmount,
+                    total_amount: finalAmount,
+                    total_items: totalItems,
+                    payment_method: finalPaymentMethod,
+                    status: 'completed',
+                    customer_id: selectedCustomerId || null,
+                };
+
+                let { data: transaction, error: txError } = await supabase
+                    .from('transactions')
+                    .insert(txPayload)
+                    .select()
+                    .single();
+
+                // Graceful fallback if customer_id column doesn't exist yet
+                if (txError && typeof txError.message === 'string' && txError.message.includes('customer_id')) {
+                    delete txPayload.customer_id;
+                    const retry = await supabase.from('transactions').insert(txPayload).select().single();
+                    transaction = retry.data;
+                    txError = retry.error;
+                }
+
+                if (txError) throw txError;
+
+                // Create transaction items
+                const txItems = items.map((item) => ({
+                    transaction_id: transaction.id,
+                    product_id: item.id,
+                    product_name: item.name,
+                    quantity: item.quantity,
+                    price: item.price,
+                    subtotal: item.price * item.quantity,
+                }));
+
+                const { error: itemsError } = await supabase
+                    .from('transaction_items')
+                    .insert(txItems);
+
+                if (itemsError) throw itemsError;
+
+                // Update stock
+                for (const item of items) {
+                    const newStock = item.stock - item.quantity;
+                    await supabase
+                        .from('products')
+                        .update({ stock: newStock, updated_at: new Date().toISOString() })
+                        .eq('id', item.id);
+
+                    // Stock history
+                    await supabase.from('stock_history').insert({
+                        product_id: item.id,
+                        user_id: user.id,
+                        type: 'sale',
+                        quantity: -item.quantity,
+                        stock_before: item.stock,
+                        stock_after: newStock,
+                        notes: `Penjualan - ${invoiceNumber}`,
+                    });
+                }
+
+                // Reward points if customer selected
+                const earnedPoints = Math.floor(finalAmount / 10000);
+                if (selectedCustomerId && earnedPoints > 0) {
+                    const customer = customers.find(c => c.id.toString() === selectedCustomerId);
+                    if (customer) {
+                        await supabase
+                            .from('customers')
+                            .update({ total_points: (customer.total_points || 0) + earnedPoints })
+                            .eq('id', customer.id);
+                    }
+                }
+
+                // Save checkout data for receipt
+                lastCheckoutRef.current = {
+                    storeName: user?.store_name,
+                    customerName: customers.find(c => c.id.toString() === selectedCustomerId)?.name || '',
+                    invoiceNumber,
+                    items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
+                    totalAmount: finalAmount,
+                    totalItems,
+                    paymentMethod: finalPaymentMethod,
+                    paidAmount: finalPaymentMethod === 'cash' ? parseInt(paidAmount || '0') : finalAmount,
+                    change: finalPaymentMethod === 'cash' ? parseInt(paidAmount || '0') - finalAmount : 0,
+                    createdAt: new Date(),
+                };
+
+                setLastInvoice(invoiceNumber);
+                clearCart();
+                setPaidAmount('');
+                setTxDiscount('');
+                setSelectedCustomerId('');
+                setCheckoutModal(false);
+                setSuccessModal(true);
+                loadData(); // refresh products
             };
 
-            let { data: transaction, error: txError } = await supabase
-                .from('transactions')
-                .insert(txPayload)
-                .select()
-                .single();
-
-            // Graceful fallback if customer_id column doesn't exist yet
-            if (txError && typeof txError.message === 'string' && txError.message.includes('customer_id')) {
-                delete txPayload.customer_id;
-                const retry = await supabase.from('transactions').insert(txPayload).select().single();
-                transaction = retry.data;
-                txError = retry.error;
+            // If cash, save directly
+            if (paymentMethod === 'cash') {
+                await saveTransactionToDB('cash');
+                return;
             }
 
-            if (txError) throw txError;
+            // If cashless, get Midtrans Token
+            if (!session?.access_token) throw new Error('Anda belum login');
 
-            // Create transaction items
-            const txItems = items.map((item) => ({
-                transaction_id: transaction.id,
-                product_id: item.id,
-                product_name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-                subtotal: item.price * item.quantity,
-            }));
+            const customerName = customers.find(c => c.id.toString() === selectedCustomerId)?.name || 'Pelanggan Umum';
 
-            const { error: itemsError } = await supabase
-                .from('transaction_items')
-                .insert(txItems);
+            const res = await fetch('/api/payments/midtrans', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                    order_id: invoiceNumber + '-' + Date.now().toString().slice(-4), // Unique order id
+                    gross_amount: finalAmount,
+                    customer_name: customerName,
+                    payment_method: paymentMethod
+                })
+            });
 
-            if (itemsError) throw itemsError;
+            const paymentData = await res.json();
 
-            // Update stock
-            for (const item of items) {
-                const newStock = item.stock - item.quantity;
-                await supabase
-                    .from('products')
-                    .update({ stock: newStock, updated_at: new Date().toISOString() })
-                    .eq('id', item.id);
-
-                // Stock history
-                await supabase.from('stock_history').insert({
-                    product_id: item.id,
-                    user_id: user.id,
-                    type: 'sale',
-                    quantity: -item.quantity,
-                    stock_before: item.stock,
-                    stock_after: newStock,
-                    notes: `Penjualan - ${invoiceNumber}`,
-                });
-            }
-
-            // Reward points if customer selected (1 point per Rp 10.000 final amount)
-            const earnedPoints = Math.floor(finalAmount / 10000);
-            if (selectedCustomerId && earnedPoints > 0) {
-                const customer = customers.find(c => c.id.toString() === selectedCustomerId);
-                if (customer) {
-                    await supabase
-                        .from('customers')
-                        .update({ total_points: (customer.total_points || 0) + earnedPoints })
-                        .eq('id', customer.id);
+            if (!res.ok) {
+                // if it's mock (no keys), we can just pretend it succeeded
+                if (paymentData.error && paymentData.error.includes('MOCK-KEY')) {
+                    console.log('Using mock payment...'); // Fallback handled inside
+                } else {
+                    throw new Error(paymentData.error || 'Gagal membuat tagihan pembayaran');
                 }
             }
 
-            // Save checkout data for receipt
-            lastCheckoutRef.current = {
-                storeName: user?.store_name,
-                customerName: customers.find(c => c.id.toString() === selectedCustomerId)?.name || '',
-                invoiceNumber,
-                items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
-                totalAmount: finalAmount,
-                totalItems,
-                paymentMethod,
-                paidAmount: parseInt(paidAmount || '0'),
-                change: paymentMethod === 'cash' ? parseInt(paidAmount || '0') - finalAmount : 0,
-                createdAt: new Date(),
-            };
+            // Launch Snap
+            if (paymentData.token && window.snap) {
+                window.snap.pay(paymentData.token, {
+                    onSuccess: async function (result) {
+                        try {
+                            setProcessing(true);
+                            await saveTransactionToDB(paymentMethod);
+                        } finally {
+                            setProcessing(false);
+                        }
+                    },
+                    onPending: function (result) {
+                        alert("Pembayaran tertunda. Cek status di dashboard Midtrans.");
+                        setProcessing(false);
+                    },
+                    onError: function (result) {
+                        alert("Pembayaran gagal!");
+                        setProcessing(false);
+                    },
+                    onClose: function () {
+                        // Customer closed the popup without finishing payment
+                        setProcessing(false);
+                    }
+                });
+            } else {
+                // Mock behavior if Midtrans isn't fully set up with keys
+                alert('Tolong segera selesaikan konfigurasi KEY Midtrans di .env.local untuk menggunakan Snap. Menyimpan sebagai pembayaran cash sementara (Sandbox/Mock).');
+                await saveTransactionToDB(paymentMethod);
+            }
 
-            setLastInvoice(invoiceNumber);
-            clearCart();
-            setPaidAmount('');
-            setTxDiscount('');
-            setSelectedCustomerId('');
-            setCheckoutModal(false);
-            setSuccessModal(true);
-            loadData(); // refresh products
         } catch (err) {
             console.error('Checkout error:', err);
             alert('Gagal memproses transaksi: ' + err.message);
