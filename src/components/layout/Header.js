@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { getGreeting } from '@/lib/utils';
-import { Bell, Search, Download } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
+import NotificationPanel from '@/components/ui/NotificationPanel';
 
 export default function Header() {
     const { user } = useAuthStore();
@@ -57,10 +58,7 @@ export default function Header() {
                             Install App
                         </button>
                     )}
-                    <button className="p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer relative">
-                        <Bell size={20} />
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full" />
-                    </button>
+                    <NotificationPanel />
                     <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-xl border border-slate-700">
                         <Search size={16} className="text-slate-500" />
                         <input
