@@ -550,16 +550,16 @@ export default function CashierPage() {
                                             )}
                                         </div>
 
-                                        <p className="text-sm font-medium text-white truncate">{product.name}</p>
+                                        <p className="text-sm font-medium text-white line-clamp-2 leading-snug h-10">{product.name}</p>
 
                                         {/* Price with discount */}
                                         {hasDiscount ? (
-                                            <div className="mt-1 w-full overflow-hidden">
-                                                <p className="text-lg font-bold text-emerald-400 truncate">{formatRupiah(discountedPrice)}</p>
-                                                <p className="text-xs text-slate-500 line-through truncate">{formatRupiah(product.price)}</p>
+                                            <div className="mt-1 w-full">
+                                                <p className="text-[15px] sm:text-base font-bold text-emerald-400 tracking-tight">{formatRupiah(discountedPrice)}</p>
+                                                <p className="text-[11px] text-slate-500 line-through truncate">{formatRupiah(product.price)}</p>
                                             </div>
                                         ) : (
-                                            <p className="text-lg font-bold text-indigo-400 mt-1 truncate w-full">{formatRupiah(product.price)}</p>
+                                            <p className="text-[15px] sm:text-base font-bold text-indigo-400 mt-1 tracking-tight w-full break-words">{formatRupiah(product.price)}</p>
                                         )}
 
                                         <div className="flex items-center justify-between mt-2">
