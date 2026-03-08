@@ -34,6 +34,8 @@ export default function SettingsPage() {
         store_name: '',
         phone: '',
         email: '',
+        receipt_header: '',
+        receipt_footer: '',
     });
 
     // Multi-user state
@@ -51,6 +53,8 @@ export default function SettingsPage() {
                 store_name: user.store_name || '',
                 phone: user.phone || '',
                 email: user.email || '',
+                receipt_header: user.receipt_header || '',
+                receipt_footer: user.receipt_footer || '',
             });
             loadCashiers();
         }
@@ -75,6 +79,8 @@ export default function SettingsPage() {
                     full_name: profile.full_name,
                     store_name: profile.store_name,
                     phone: profile.phone,
+                    receipt_header: profile.receipt_header,
+                    receipt_footer: profile.receipt_footer,
                 })
                 .eq('id', user.id);
 
@@ -194,6 +200,23 @@ export default function SettingsPage() {
                             disabled
                         />
                     </div>
+
+                    {isOwner && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                            <Input
+                                label="Slogan / Header Struk"
+                                value={profile.receipt_header}
+                                onChange={(e) => setProfile({ ...profile, receipt_header: e.target.value })}
+                                placeholder="Cth: Belanja Hemat Harga Merakyat"
+                            />
+                            <Input
+                                label="Pesan Penutup / Footer Struk"
+                                value={profile.receipt_footer}
+                                onChange={(e) => setProfile({ ...profile, receipt_footer: e.target.value })}
+                                placeholder="Cth: Terima Kasih Atas Kunjungan Anda"
+                            />
+                        </div>
+                    )}
 
                     <div className="flex items-center gap-3 pt-2">
                         <Button onClick={handleSaveProfile} loading={saving} icon={Save}>

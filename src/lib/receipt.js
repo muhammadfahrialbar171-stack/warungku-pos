@@ -5,7 +5,7 @@ import { formatRupiah, formatDateTime } from '@/lib/utils';
 /**
  * Generate receipt HTML and open print dialog
  */
-export function printReceipt({ storeName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, createdAt }) {
+export function printReceipt({ storeName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, createdAt, receiptHeader, receiptFooter }) {
   const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
 
   const receiptHTML = `
@@ -44,6 +44,7 @@ export function printReceipt({ storeName, invoiceNumber, customerName, items, to
 <body>
   <div class="center">
     <div class="store-name">${storeName || 'WarungKu POS'}</div>
+    ${receiptHeader ? `<div style="font-size: 11px; margin-bottom: 4px;">${receiptHeader}</div>` : ''}
     <div style="font-size: 10px; color: #666;">Struk Penjualan</div>
   </div>
 
@@ -106,8 +107,10 @@ export function printReceipt({ storeName, invoiceNumber, customerName, items, to
   <div class="divider"></div>
 
   <div class="center footer">
+    ${receiptFooter ? `<p>${receiptFooter}</p>` : `
     <p>Terima kasih atas kunjungan Anda!</p>
     <p>Barang yang sudah dibeli tidak dapat dikembalikan</p>
+    `}
     <p style="margin-top: 6px;">— WarungKu POS —</p>
   </div>
 </body>
@@ -126,11 +129,12 @@ export function printReceipt({ storeName, invoiceNumber, customerName, items, to
 /**
  * Share receipt via WhatsApp (text version)
  */
-export function shareReceiptWhatsApp({ storeName, invoiceNumber, customerName, items, totalAmount, paymentMethod, createdAt }) {
+export function shareReceiptWhatsApp({ storeName, invoiceNumber, customerName, items, totalAmount, paymentMethod, createdAt, receiptHeader, receiptFooter }) {
   const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
 
   let text = `🧾 *STRUK PEMBELIAN*\n`;
   text += `${storeName || 'WarungKu POS'}\n`;
+  if (receiptHeader) text += `${receiptHeader}\n`;
   text += `━━━━━━━━━━━━━━━━━━\n`;
   text += `No: ${invoiceNumber}\n`;
   text += `Tgl: ${formatDateTime(createdAt || new Date())}\n`;
@@ -148,7 +152,11 @@ export function shareReceiptWhatsApp({ storeName, invoiceNumber, customerName, i
   text += `*TOTAL: ${formatRupiah(totalAmount)}*\n`;
   text += `Bayar: ${paymentLabel}\n`;
   text += `━━━━━━━━━━━━━━━━━━\n`;
-  text += `Terima kasih! 🙏`;
+  if (receiptFooter) {
+    text += `${receiptFooter}`;
+  } else {
+    text += `Terima kasih! 🙏`;
+  }
 
   const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank');

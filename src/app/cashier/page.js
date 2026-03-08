@@ -302,6 +302,7 @@ export default function CashierPage() {
                     product_name: item.name,
                     quantity: item.quantity,
                     price: item.price,
+                    cost_price: item.cost_price || 0,
                     subtotal: item.price * item.quantity,
                 }));
 
@@ -346,6 +347,8 @@ export default function CashierPage() {
                 // Save checkout data for receipt
                 lastCheckoutRef.current = {
                     storeName: user?.store_name,
+                    receiptHeader: user?.receipt_header,
+                    receiptFooter: user?.receipt_footer,
                     customerName: customers.find(c => c.id.toString() === selectedCustomerId)?.name || '',
                     invoiceNumber,
                     items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
