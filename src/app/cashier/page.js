@@ -32,6 +32,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { formatRupiah, generateInvoice, cn } from '@/lib/utils';
+import dayjs from 'dayjs';
+import { saveProductsOffline, getProductsOffline, saveCustomersOffline, getCustomersOffline, enqueueOfflineTransaction, getOfflineTransactionsQueue, removeTransactionFromQueue } from '@/lib/indexedDB';
 
 export default function CashierPage() {
     const { user, session } = useAuthStore();
@@ -61,6 +63,87 @@ export default function CashierPage() {
     // Hold Bill State
     const [heldBills, setHeldBills] = useState([]);
     const [holdModal, setHoldModal] = useState(false);
+
+    // Offline State
+    const [isOnline, setIsOnline] = useState(true);
+    const [syncing, setSyncing] = useState(false);
+    const [transactionSuccessData, setTransactionSuccessData] = useState(null);
+
+    // Listen to network status
+    useEffect(() => {
+        setIsOnline(navigator.onLine);
+
+        const handleOnline = () => {
+            setIsOnline(true);
+            syncOfflineTransactions();
+        };
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
+
+    // Function to sync queued offline transactions
+    const syncOfflineTransactions = async () => {
+        if (!navigator.onLine) return;
+
+        try {
+            setSyncing(true);
+            const queue = await getOfflineTransactionsQueue();
+            if (queue.length === 0) return;
+
+            let successCount = 0;
+            for (const tx of queue) {
+                const payload = {
+                    invoiceNumber: tx.invoiceNumber,
+                    items: tx.items,
+                    totalAmount: tx.totalAmount,
+                    paymentMethod: tx.paymentMethod,
+                    paidAmount: tx.paidAmount || tx.totalAmount,
+                    change: tx.change || 0,
+                    customerId: tx.customerId || null,
+                    discount: tx.txDiscount || 0,
+                    receiptHeader: tx.receiptHeader,
+                    receiptFooter: tx.receiptFooter,
+                    costPrice: tx.costPrice || 0,
+                    createdAt: tx.createdAt || new Date()
+                };
+
+                try {
+                    const { supabase } = await import('@/lib/supabase');
+                    const { data: userData } = await supabase.auth.getUser();
+                    if (!userData.user) continue;
+
+                    const res = await fetch('/api/transactions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...payload, user_id: userData.user.id })
+                    });
+
+                    if (res.ok) {
+                        await removeTransactionFromQueue(tx.temp_id);
+                        successCount++;
+                    }
+                } catch (e) {
+                    console.error('Failed to sync queue item', tx.temp_id, e);
+                }
+            }
+
+            if (successCount > 0) {
+                alert(`Berhasil sinkronisasi ${successCount} transaksi offline ke Server.`);
+            }
+        } catch (err) {
+            console.error('Sync error:', err);
+        } finally {
+            setSyncing(false);
+            loadData(); // reload products to get correct stock
+        }
+    };
 
     // Initialize Midtrans Snap SDK
     useEffect(() => {
@@ -131,29 +214,37 @@ export default function CashierPage() {
         if (!user) return;
         setLoading(true);
         try {
-            const [{ data: prods }, { data: cats }, { data: custs }] = await Promise.all([
-                supabase
-                    .from('products')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .eq('is_active', true)
-                    .order('name'),
-                supabase
-                    .from('categories')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('name'),
-                supabase
-                    .from('customers')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('name'),
-            ]);
-            setProducts(prods || []);
-            setCategories(cats || []);
-            setCustomers(custs || []);
+            if (navigator.onLine) {
+                // Fetch from Supabase
+                const [productsRes, categoriesRes, customersRes] = await Promise.all([
+                    supabase.from('products').select('*').eq('user_id', user.id).eq('is_active', true).order('name'),
+                    supabase.from('categories').select('*').eq('user_id', user.id).order('name'),
+                    supabase.from('customers').select('*').eq('user_id', user.id).order('name')
+                ]);
+
+                if (productsRes.error) throw productsRes.error;
+                setProducts(productsRes.data || []);
+                setCategories(categoriesRes.data || []);
+                setCustomers(customersRes.data || []);
+
+                // Cache for offline
+                saveProductsOffline(productsRes.data || []);
+                saveCustomersOffline(customersRes.data || []);
+            } else {
+                // Load from IDB
+                const offlineProd = await getProductsOffline();
+                const offlineCust = await getCustomersOffline();
+                setProducts(offlineProd);
+                setCustomers(offlineCust);
+                // Categories can be extracted from products locally
+                const extractedCategories = [...new Set(offlineProd.map(p => p.category))].filter(Boolean).map((cat, i) => ({ id: i, name: cat }));
+                setCategories(extractedCategories);
+            }
         } catch (err) {
-            console.error('Load error:', err);
+            console.error('Error loading data:', err);
+            // Fallback to offline if unexpected network failure
+            const offlineProd = await getProductsOffline();
+            setProducts(offlineProd);
         } finally {
             setLoading(false);
         }
@@ -257,95 +348,34 @@ export default function CashierPage() {
         };
     }, [scannerModal, handleScanSuccess]);
 
-    const handleCheckout = async () => {
-        if (processing) return;
-        setProcessing(true);
-
+    const saveTransactionToDB = async (paymentMethod = 'cash') => {
         try {
-            const invoiceNumber = generateInvoice();
+            const invoiceNumber = `INV-${Date.now()}`;
+            const totalCOGS = items.reduce((sum, item) => sum + ((item.cost_price || 0) * item.quantity), 0);
+            const isCash = paymentMethod === 'cash';
 
-            // Function to save transaction to DB once paid
-            const saveTransactionToDB = async (finalPaymentMethod) => {
-                // Create transaction payload
-                const txPayload = {
-                    user_id: user.id,
-                    invoice_number: invoiceNumber,
-                    subtotal: totalAmount,
-                    discount_amount: txDiscountAmount,
-                    total_amount: finalAmount,
-                    total_items: totalItems,
-                    payment_method: finalPaymentMethod,
-                    status: 'completed',
-                    customer_id: selectedCustomerId || null,
-                };
+            const payload = {
+                user_id: user.id,
+                invoiceNumber,
+                items: items.map(i => ({ ...i, product_id: i.id })),
+                totalAmount: finalAmount,
+                paymentMethod,
+                paidAmount: isCash ? parseInt(paidAmount || '0') : finalAmount,
+                change: isCash ? parseInt(paidAmount || '0') - finalAmount : 0,
+                customerId: selectedCustomerId || null,
+                txDiscount: txDiscountAmount, // Assuming txDiscountAmount is the final calculated discount
+                receiptHeader: user?.receipt_header,
+                receiptFooter: user?.receipt_footer,
+                costPrice: totalCOGS,
+                createdAt: new Date().toISOString()
+            };
 
-                let { data: transaction, error: txError } = await supabase
-                    .from('transactions')
-                    .insert(txPayload)
-                    .select()
-                    .single();
+            if (!isOnline) {
+                // OFFLINE QUEUE
+                await enqueueOfflineTransaction(payload);
 
-                // Graceful fallback if customer_id column doesn't exist yet
-                if (txError && typeof txError.message === 'string' && txError.message.includes('customer_id')) {
-                    delete txPayload.customer_id;
-                    const retry = await supabase.from('transactions').insert(txPayload).select().single();
-                    transaction = retry.data;
-                    txError = retry.error;
-                }
-
-                if (txError) throw txError;
-
-                // Create transaction items
-                const txItems = items.map((item) => ({
-                    transaction_id: transaction.id,
-                    product_id: item.id,
-                    product_name: item.name,
-                    quantity: item.quantity,
-                    price: item.price,
-                    cost_price: item.cost_price || 0,
-                    subtotal: item.price * item.quantity,
-                }));
-
-                const { error: itemsError } = await supabase
-                    .from('transaction_items')
-                    .insert(txItems);
-
-                if (itemsError) throw itemsError;
-
-                // Update stock
-                for (const item of items) {
-                    const newStock = item.stock - item.quantity;
-                    await supabase
-                        .from('products')
-                        .update({ stock: newStock, updated_at: new Date().toISOString() })
-                        .eq('id', item.id);
-
-                    // Stock history
-                    await supabase.from('stock_history').insert({
-                        product_id: item.id,
-                        user_id: user.id,
-                        type: 'sale',
-                        quantity: -item.quantity,
-                        stock_before: item.stock,
-                        stock_after: newStock,
-                        notes: `Penjualan - ${invoiceNumber}`,
-                    });
-                }
-
-                // Reward points if customer selected
-                const earnedPoints = Math.floor(finalAmount / 10000);
-                if (selectedCustomerId && earnedPoints > 0) {
-                    const customer = customers.find(c => c.id.toString() === selectedCustomerId);
-                    if (customer) {
-                        await supabase
-                            .from('customers')
-                            .update({ total_points: (customer.total_points || 0) + earnedPoints })
-                            .eq('id', customer.id);
-                    }
-                }
-
-                // Save checkout data for receipt
-                lastCheckoutRef.current = {
+                // Optimistically clear cart visually and pretend success
+                setTransactionSuccessData({
                     storeName: user?.store_name,
                     receiptHeader: user?.receipt_header,
                     receiptFooter: user?.receipt_footer,
@@ -354,11 +384,21 @@ export default function CashierPage() {
                     items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
                     totalAmount: finalAmount,
                     totalItems,
-                    paymentMethod: finalPaymentMethod,
-                    paidAmount: finalPaymentMethod === 'cash' ? parseInt(paidAmount || '0') : finalAmount,
-                    change: finalPaymentMethod === 'cash' ? parseInt(paidAmount || '0') - finalAmount : 0,
+                    paymentMethod,
+                    paidAmount: isCash ? parseInt(paidAmount || '0') : finalAmount,
+                    change: isCash ? parseInt(paidAmount || '0') - finalAmount : 0,
                     createdAt: new Date(),
-                };
+                    isOffline: true
+                });
+
+                // Adjust local state stock visually so user can't double-sell offline 
+                const updatedProds = products.map(p => {
+                    const cartItem = items.find(i => i.id === p.id);
+                    if (cartItem) return { ...p, stock: p.stock - cartItem.quantity };
+                    return p;
+                });
+                setProducts(updatedProds);
+                saveProductsOffline(updatedProds);
 
                 setLastInvoice(invoiceNumber);
                 clearCart();
@@ -367,81 +407,53 @@ export default function CashierPage() {
                 setSelectedCustomerId('');
                 setCheckoutModal(false);
                 setSuccessModal(true);
-                loadData(); // refresh products
-            };
-
-            // If cash, save directly
-            if (paymentMethod === 'cash') {
-                await saveTransactionToDB('cash');
                 return;
             }
 
-            // --- MIDTRANS INTEGRATION TEMPORARILY DISABLED ---
-            // Record the cashless payment manually in the database for now
-            await saveTransactionToDB(paymentMethod);
-            return;
-            /*
-            // If cashless, get Midtrans Token
-            if (!session?.access_token) throw new Error('Anda belum login');
-
-            const customerName = customers.find(c => c.id.toString() === selectedCustomerId)?.name || 'Pelanggan Umum';
-
-            const res = await fetch('/api/payments/midtrans', {
+            // ONLINE SAVING - direct API hit (refactoring away from client-side direct supabase call to use API pattern like previous midtrans mockup)
+            const res = await fetch('/api/transactions', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
-                },
-                body: JSON.stringify({
-                    order_id: invoiceNumber + '-' + Date.now().toString().slice(-4), // Unique order id
-                    gross_amount: finalAmount,
-                    customer_name: customerName,
-                    payment_method: paymentMethod
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
 
-            const paymentData = await res.json();
+            if (!res.ok) throw new Error('Gagal memproses transaksi API');
 
-            if (!res.ok) {
-                // if it's mock (no keys), we can just pretend it succeeded
-                if (paymentData.error && paymentData.error.includes('MOCK-KEY')) {
-                    console.log('Using mock payment...'); // Fallback handled inside
-                } else {
-                    throw new Error(paymentData.error || 'Gagal membuat tagihan pembayaran');
-                }
-            }
+            setTransactionSuccessData({
+                storeName: user?.store_name,
+                receiptHeader: user?.receipt_header,
+                receiptFooter: user?.receipt_footer,
+                customerName: customers.find(c => c.id.toString() === selectedCustomerId)?.name || '',
+                invoiceNumber,
+                items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
+                totalAmount: finalAmount,
+                totalItems,
+                paymentMethod,
+                paidAmount: isCash ? parseInt(paidAmount || '0') : finalAmount,
+                change: isCash ? parseInt(paidAmount || '0') - finalAmount : 0,
+                createdAt: new Date(),
+                isOffline: false
+            });
 
-            // Launch Snap
-            if (paymentData.token && window.snap) {
-                window.snap.pay(paymentData.token, {
-                    onSuccess: async function (result) {
-                        try {
-                            setProcessing(true);
-                            await saveTransactionToDB(paymentMethod);
-                        } finally {
-                            setProcessing(false);
-                        }
-                    },
-                    onPending: function (result) {
-                        alert("Pembayaran tertunda. Cek status di dashboard Midtrans.");
-                        setProcessing(false);
-                    },
-                    onError: function (result) {
-                        alert("Pembayaran gagal!");
-                        setProcessing(false);
-                    },
-                    onClose: function () {
-                        // Customer closed the popup without finishing payment
-                        setProcessing(false);
-                    }
-                });
-            } else {
-                // Mock behavior if Midtrans isn't fully set up with keys
-                alert('Tolong segera selesaikan konfigurasi KEY Midtrans di .env.local untuk menggunakan Snap. Menyimpan sebagai pembayaran cash sementara (Sandbox/Mock).');
-                await saveTransactionToDB(paymentMethod);
-            }
-            */
+            setLastInvoice(invoiceNumber);
+            clearCart();
+            setPaidAmount('');
+            setTxDiscount('');
+            setSelectedCustomerId('');
+            setCheckoutModal(false);
+            setSuccessModal(true);
+            loadData(); // refresh products
+        } catch (err) {
+            throw err;
+        }
+    };
 
+    const handleCheckout = async () => {
+        if (processing) return;
+        setProcessing(true);
+
+        try {
+            await saveTransactionToDB(paymentMethod);
         } catch (err) {
             console.error('Checkout error:', err);
             alert('Gagal memproses transaksi: ' + err.message);
