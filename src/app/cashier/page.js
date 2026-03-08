@@ -123,6 +123,7 @@ export default function CashierPage() {
                 supabase
                     .from('customers')
                     .select('*')
+                    .eq('user_id', user.id)
                     .order('name'),
             ]);
             setProducts(prods || []);
