@@ -64,8 +64,6 @@ export default function CashierPage() {
 
     // Initialize Midtrans Snap SDK
     useEffect(() => {
-        // --- MIDTRANS INTEGRATION TEMPORARILY DISABLED ---
-        /*
         // const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
         // Use production url if you have production keys
         const snapScript = "https://app.midtrans.com/snap/snap.js";
@@ -82,7 +80,6 @@ export default function CashierPage() {
                 document.body.removeChild(script);
             };
         }
-        */
     }, []);
 
     // Load held bills from localStorage
@@ -376,11 +373,6 @@ export default function CashierPage() {
                 return;
             }
 
-            // --- MIDTRANS INTEGRATION TEMPORARILY DISABLED ---
-            // Record the cashless payment manually in the database for now
-            await saveTransactionToDB(paymentMethod);
-            return;
-            /*
             // If cashless, get Midtrans Token
             if (!session?.access_token) throw new Error('Anda belum login');
 
@@ -440,7 +432,6 @@ export default function CashierPage() {
                 alert('Tolong segera selesaikan konfigurasi KEY Midtrans di .env.local untuk menggunakan Snap. Menyimpan sebagai pembayaran cash sementara (Sandbox/Mock).');
                 await saveTransactionToDB(paymentMethod);
             }
-            */
 
         } catch (err) {
             console.error('Checkout error:', err);
