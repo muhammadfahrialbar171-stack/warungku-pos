@@ -550,27 +550,31 @@ export default function CashierPage() {
                                             )}
                                         </div>
 
-                                        <p className="text-sm font-medium text-white line-clamp-2 leading-snug h-10">{product.name}</p>
+                                        <div className="flex-1 min-h-0 flex flex-col justify-between">
+                                            <div>
+                                                <p className="text-sm font-medium text-white line-clamp-2 leading-snug break-words" title={product.name}>{product.name}</p>
 
-                                        {/* Price with discount */}
-                                        {hasDiscount ? (
-                                            <div className="mt-1 w-full">
-                                                <p className="text-[15px] sm:text-base font-bold text-emerald-400 tracking-tight">{formatRupiah(discountedPrice)}</p>
-                                                <p className="text-[11px] text-slate-500 line-through truncate">{formatRupiah(product.price)}</p>
+                                                {/* Price with discount */}
+                                                {hasDiscount ? (
+                                                    <div className="mt-1.5 w-full">
+                                                        <p className="text-[14px] sm:text-[15px] font-bold text-emerald-400 tracking-tight break-all">{formatRupiah(discountedPrice)}</p>
+                                                        <p className="text-[11px] text-slate-500 line-through truncate">{formatRupiah(product.price)}</p>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-[14px] sm:text-[15px] font-bold text-indigo-400 mt-1.5 tracking-tight w-full break-all">{formatRupiah(product.price)}</p>
+                                                )}
                                             </div>
-                                        ) : (
-                                            <p className="text-[15px] sm:text-base font-bold text-indigo-400 mt-1 tracking-tight w-full break-words">{formatRupiah(product.price)}</p>
-                                        )}
 
-                                        <div className="flex items-center justify-between mt-2">
-                                            <Badge variant={product.stock <= 5 ? 'warning' : 'success'} className="text-[10px]">
-                                                Stok: {product.stock}
-                                            </Badge>
-                                            {hasDiscount && (
-                                                <Badge variant="warning" className="text-[10px]">
-                                                    {product.discount_type === 'percentage' ? `${product.discount}%` : formatRupiah(product.discount)}
+                                            <div className="flex items-center justify-between mt-3">
+                                                <Badge variant={product.stock <= 5 ? 'warning' : 'success'} className="text-[9px] px-1.5 py-0.5">
+                                                    Stok: {product.stock}
                                                 </Badge>
-                                            )}
+                                                {hasDiscount && (
+                                                    <Badge variant="warning" className="text-[9px] px-1.5 py-0.5">
+                                                        {product.discount_type === 'percentage' ? `${product.discount}%` : formatRupiah(product.discount)}
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {inCart && (
