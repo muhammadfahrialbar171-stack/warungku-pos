@@ -270,7 +270,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 xl:grid-cols-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <StatCard title="Total Pendapatan" value={formatRupiah(totalSales)} icon={DollarSign} color="indigo" />
                 <StatCard title="Total HPP (Modal)" value={formatRupiah(totalCogs)} icon={Wallet} color="amber" />
                 <StatCard title="Laba Kotor" value={formatRupiah(grossProfit)} icon={TrendingUp} color="emerald" />
