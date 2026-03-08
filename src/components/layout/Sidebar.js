@@ -40,7 +40,7 @@ export default function Sidebar({ collapsed, onToggle }) {
     return (
         <aside
             className={cn(
-                'fixed left-0 top-0 h-full bg-slate-900/95 backdrop-blur-xl border-r border-slate-800 z-40 transition-all duration-300 hidden md:flex flex-col',
+                'fixed left-0 top-0 h-full bg-slate-900/80 backdrop-blur-2xl border-r border-white/5 shadow-2xl z-40 transition-all duration-300 hidden md:flex flex-col',
                 collapsed ? 'w-20' : 'w-64'
             )}
         >
@@ -70,20 +70,23 @@ export default function Sidebar({ collapsed, onToggle }) {
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group',
+                                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 group relative overflow-hidden',
                                     isActive
-                                        ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20'
+                                        ? 'text-white shadow-lg'
                                         : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                                 )}
                             >
+                                {isActive && (
+                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 rounded-xl rounded-r-none border-r-0 pointer-events-none" />
+                                )}
                                 <item.icon
                                     size={20}
                                     className={cn(
-                                        'flex-shrink-0 transition-colors',
-                                        isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'
+                                        'flex-shrink-0 transition-transform duration-300 z-10 relative',
+                                        isActive ? 'text-indigo-400 scale-110' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'
                                     )}
                                 />
-                                {!collapsed && <span>{item.label}</span>}
+                                {!collapsed && <span className="z-10 relative">{item.label}</span>}
                             </Link>
                         );
                     })}

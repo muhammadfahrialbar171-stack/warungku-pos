@@ -41,20 +41,23 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', c
             onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
         >
             {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-fade-in" />
 
             {/* Modal Content */}
             <div
                 className={cn(
-                    'relative w-full bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl animate-scale-in',
+                    'relative w-full bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl shadow-black/50 overflow-hidden animate-scale-in',
                     sizeClasses[size],
                     className
                 )}
             >
+                {/* Decorative top lighting */}
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
                 {/* Header */}
                 {title && (
-                    <div className="flex items-center justify-between p-5 border-b border-slate-700">
-                        <h2 className="text-lg font-semibold text-white">{title}</h2>
+                    <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-slate-800/30">
+                        <h2 className="text-xl font-bold text-white drop-shadow-sm">{title}</h2>
                         <button
                             onClick={onClose}
                             className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
@@ -65,7 +68,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', c
                 )}
 
                 {/* Body */}
-                <div className="p-5 max-h-[70vh] overflow-y-auto">
+                <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     {children}
                 </div>
             </div>

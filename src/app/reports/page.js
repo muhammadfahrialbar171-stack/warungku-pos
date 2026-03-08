@@ -153,10 +153,20 @@ export default function ReportsPage() {
             {
                 label: 'Penjualan',
                 data: salesData,
-                backgroundColor: 'rgba(99, 102, 241, 0.3)',
+                backgroundColor: (context) => {
+                    const ctx = context.chart.ctx;
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+                    gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+                    return gradient;
+                },
                 borderColor: 'rgba(99, 102, 241, 1)',
                 borderWidth: 2,
-                borderRadius: 8,
+                pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
                 fill: true,
                 tension: 0.4,
             },
@@ -216,7 +226,7 @@ export default function ReportsPage() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Laporan Penjualan</h1>
+                    <h1 className="text-2xl font-bold text-white drop-shadow-sm">Laporan Penjualan</h1>
                     <p className="text-slate-400 text-sm mt-1">Analisis performa bisnis Anda</p>
                 </div>
                 <div className="flex gap-2">
@@ -261,11 +271,11 @@ export default function ReportsPage() {
                         Bulanan
                     </button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                        className="bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                        className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner" />
                     <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                        className="bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                        className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner" />
                 </div>
             </div>
 
@@ -287,8 +297,8 @@ export default function ReportsPage() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card>
-                        <h3 className="text-lg font-semibold text-white mb-4">Grafik Penjualan</h3>
+                    <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
+                        <h3 className="text-lg font-bold text-white drop-shadow-sm mb-4">Grafik Penjualan</h3>
                         <div className="h-64">
                             {labels.length > 0 ? (
                                 <Line data={chartData} options={chartOptions} />
@@ -299,8 +309,8 @@ export default function ReportsPage() {
                             )}
                         </div>
                     </Card>
-                    <Card>
-                        <h3 className="text-lg font-semibold text-white mb-4">Grafik Transaksi</h3>
+                    <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
+                        <h3 className="text-lg font-bold text-white drop-shadow-sm mb-4">Grafik Transaksi</h3>
                         <div className="h-64">
                             {labels.length > 0 ? (
                                 <Bar data={countChartData} options={chartOptions} />
@@ -316,15 +326,16 @@ export default function ReportsPage() {
 
             {/* Sales Table */}
             {!loading && labels.length > 0 && (
-                <Card>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-white">Ringkasan {period === 'daily' ? 'Harian' : 'Bulanan'}</h3>
+                <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5 shadow-xl shadow-black/10 mt-6">
+                    <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/5 bg-slate-800/40">
+                        <h3 className="text-lg font-bold text-white drop-shadow-sm">Ringkasan {period === 'daily' ? 'Harian' : 'Bulanan'}</h3>
                         <div className="flex gap-2">
                             <Button
                                 variant="secondary"
                                 size="sm"
                                 icon={Download}
                                 onClick={() => exportDailySummaryToExcel(groupedData, labels, `ringkasan-${period}-${dateFrom}-${dateTo}`)}
+                                className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm"
                             >
                                 Excel
                             </Button>
@@ -333,46 +344,47 @@ export default function ReportsPage() {
                                 size="sm"
                                 icon={Download}
                                 onClick={() => exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, user?.store_name)}
+                                className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm"
                             >
                                 PDF
                             </Button>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-700">
-                                    <th className="text-left text-xs font-medium text-slate-400 uppercase px-4 py-3">Periode</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Transaksi</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Pendapatan</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">HPP (Modal)</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Laba Kotor</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Pengeluaran</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-4 py-3">Laba Bersih</th>
+                                <tr className="bg-slate-800/40 border-b border-white/5 text-left">
+                                    <th className="text-left text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Periode</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Transaksi</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Pendapatan</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">HPP (Modal)</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Laba Kotor</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Pengeluaran</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Laba Bersih</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800">
+                            <tbody className="divide-y divide-white/5">
                                 {labels.map((label) => (
-                                    <tr key={label} className="hover:bg-slate-800/30 transition-colors">
-                                        <td className="px-4 py-3 text-sm text-white">{label}</td>
-                                        <td className="px-4 py-3 text-right text-sm text-slate-400">{groupedData[label].count}</td>
-                                        <td className="px-4 py-3 text-right text-sm font-medium text-indigo-400">{formatRupiah(groupedData[label].sales)}</td>
-                                        <td className="px-4 py-3 text-right text-sm font-medium text-amber-500">{formatRupiah(groupedData[label].cogs)}</td>
-                                        <td className="px-4 py-3 text-right text-sm font-medium text-emerald-500">{formatRupiah(groupedData[label].gross)}</td>
-                                        <td className="px-4 py-3 text-right text-sm font-medium text-rose-400">{formatRupiah(groupedData[label].expense)}</td>
-                                        <td className="px-4 py-3 text-right text-sm font-bold text-emerald-400">{formatRupiah(groupedData[label].profit)}</td>
+                                    <tr key={label} className="hover:bg-slate-800/40 transition-colors duration-200 group">
+                                        <td className="px-6 py-4 text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors">{label}</td>
+                                        <td className="px-6 py-4 text-right text-sm text-slate-400">{groupedData[label].count}</td>
+                                        <td className="px-6 py-4 text-right text-sm font-bold text-indigo-400">{formatRupiah(groupedData[label].sales)}</td>
+                                        <td className="px-6 py-4 text-right text-sm font-bold text-amber-500">{formatRupiah(groupedData[label].cogs)}</td>
+                                        <td className="px-6 py-4 text-right text-sm font-bold text-emerald-500">{formatRupiah(groupedData[label].gross)}</td>
+                                        <td className="px-6 py-4 text-right text-sm font-bold text-rose-400">{formatRupiah(groupedData[label].expense)}</td>
+                                        <td className="px-6 py-4 text-right text-sm font-bold text-emerald-400 tracking-tight">{formatRupiah(groupedData[label].profit)}</td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot>
-                                <tr className="border-t border-slate-600 bg-slate-800/50">
-                                    <td className="px-4 py-3 text-sm font-bold text-white">Total</td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-white">{totalTransactions}</td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-indigo-400">{formatRupiah(totalSales)}</td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-amber-500">{formatRupiah(totalCogs)}</td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-emerald-500">{formatRupiah(grossProfit)}</td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-rose-400">{formatRupiah(totalExpenses)}</td>
-                                    <td className="px-4 py-3 text-right text-sm font-bold text-emerald-400">{formatRupiah(netProfit)}</td>
+                                <tr className="border-t border-white/10 bg-slate-800/60">
+                                    <td className="px-6 py-5 text-sm font-bold text-white uppercase tracking-wider">Total</td>
+                                    <td className="px-6 py-5 text-right text-sm font-bold text-white">{totalTransactions}</td>
+                                    <td className="px-6 py-5 text-right text-sm font-bold text-indigo-400 drop-shadow-sm">{formatRupiah(totalSales)}</td>
+                                    <td className="px-6 py-5 text-right text-sm font-bold text-amber-500 drop-shadow-sm">{formatRupiah(totalCogs)}</td>
+                                    <td className="px-6 py-5 text-right text-sm font-bold text-emerald-500 drop-shadow-sm">{formatRupiah(grossProfit)}</td>
+                                    <td className="px-6 py-5 text-right text-sm font-bold text-rose-400 drop-shadow-sm">{formatRupiah(totalExpenses)}</td>
+                                    <td className="px-6 py-5 text-right text-sm font-bold text-emerald-400 drop-shadow-sm text-base tracking-tight">{formatRupiah(netProfit)}</td>
                                 </tr>
                             </tfoot>
                         </table>

@@ -24,7 +24,7 @@ export default function Input({
                 )}
                 <input
                     className={cn(
-                        'w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200',
+                        'w-full bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-800/80 transition-all duration-300 shadow-inner',
                         Icon && 'pl-10',
                         error && 'border-red-500 focus:ring-red-500/50 focus:border-red-500',
                         className
@@ -47,7 +47,7 @@ export function Select({ label, error, children, className, ...props }) {
             )}
             <select
                 className={cn(
-                    'w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200 cursor-pointer',
+                    'w-full bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-800/80 transition-all duration-300 cursor-pointer shadow-inner appearance-none',
                     error && 'border-red-500',
                     className
                 )}
@@ -70,7 +70,7 @@ export function Textarea({ label, error, className, ...props }) {
             )}
             <textarea
                 className={cn(
-                    'w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200 resize-none',
+                    'w-full bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-800/80 transition-all duration-300 resize-none shadow-inner',
                     error && 'border-red-500',
                     className
                 )}

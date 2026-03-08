@@ -323,17 +323,17 @@ export default function ProductsPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Produk</h1>
+                    <h1 className="text-2xl font-bold text-white drop-shadow-sm">Produk</h1>
                     <p className="text-slate-400 text-sm mt-1">Kelola produk toko Anda</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" onClick={() => setImportModal(true)}>
+                <div className="flex gap-3">
+                    <Button variant="secondary" size="sm" onClick={() => setImportModal(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm">
                         <FileSpreadsheet size={16} /> Import CSV
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setCategoryModalOpen(true)}>
+                    <Button variant="secondary" size="sm" onClick={() => setCategoryModalOpen(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm">
                         <Plus size={16} /> Kategori
                     </Button>
-                    <Button size="sm" onClick={openAddModal}>
+                    <Button size="sm" onClick={openAddModal} className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25">
                         <Plus size={16} /> Tambah Produk
                     </Button>
                 </div>
@@ -342,19 +342,19 @@ export default function ProductsPage() {
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                         type="text"
                         placeholder="Cari nama atau SKU produk..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                        className="w-full bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:bg-slate-800/80 transition-all duration-300 shadow-inner"
                     />
                 </div>
                 <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                    className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:bg-slate-800/80 cursor-pointer transition-all duration-300 shadow-inner appearance-none"
                 >
                     <option value="all">Semua Kategori</option>
                     {categories.map((cat) => (
@@ -376,43 +376,43 @@ export default function ProductsPage() {
                     action={<Button size="sm" onClick={openAddModal}><Plus size={16} /> Tambah Produk</Button>}
                 />
             ) : (
-                <Card className="!p-0 overflow-hidden">
+                <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5">
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full border-collapse">
                             <thead>
-                                <tr className="border-b border-slate-700">
-                                    <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-5 py-3">Produk</th>
-                                    <th className="text-left text-xs font-medium text-slate-400 uppercase tracking-wider px-5 py-3 hidden sm:table-cell">Kategori</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase tracking-wider px-5 py-3">Harga</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase tracking-wider px-5 py-3">Stok</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase tracking-wider px-5 py-3">Aksi</th>
+                                <tr className="border-b border-white/5 bg-slate-800/40">
+                                    <th className="text-left text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Produk</th>
+                                    <th className="text-left text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4 hidden sm:table-cell">Kategori</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Harga</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Stok</th>
+                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800">
+                            <tbody className="divide-y divide-white/5">
                                 {filtered.map((product) => {
                                     const discountedPrice = getDiscountedPrice(product);
                                     const hasDiscount = product.discount > 0;
 
                                     return (
-                                        <tr key={product.id} className="hover:bg-slate-800/30 transition-colors">
-                                            <td className="px-5 py-3.5">
+                                        <tr key={product.id} className="hover:bg-slate-800/40 transition-colors duration-200 group">
+                                            <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     {/* Product Image */}
-                                                    <div className="w-10 h-10 rounded-lg bg-slate-700 flex-shrink-0 overflow-hidden">
+                                                    <div className="w-12 h-12 rounded-xl bg-slate-700/50 flex-shrink-0 overflow-hidden border border-white/5">
                                                         {product.image_url ? (
                                                             <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                                                         ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-slate-500">
-                                                                <Package size={16} />
+                                                            <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                                                <Package size={20} />
                                                             </div>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-medium text-white">{product.name}</p>
-                                                        <div className="flex items-center gap-2">
-                                                            {product.sku && <span className="text-xs text-slate-500">SKU: {product.sku}</span>}
+                                                        <p className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors">{product.name}</p>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            {product.sku && <span className="text-xs text-slate-400 font-medium bg-slate-800/80 px-2 py-0.5 rounded-md border border-white/5">{product.sku}</span>}
                                                             {hasDiscount && (
-                                                                <Badge variant="warning" className="text-[10px]">
+                                                                <Badge variant="warning" className="text-[10px] shadow-sm">
                                                                     {product.discount_type === 'percentage' ? `${product.discount}%` : formatRupiah(product.discount)} OFF
                                                                 </Badge>
                                                             )}
@@ -420,30 +420,30 @@ export default function ProductsPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-5 py-3.5 hidden sm:table-cell">
-                                                <Badge variant="info">{product.categories?.name || '-'}</Badge>
+                                            <td className="px-6 py-4 hidden sm:table-cell">
+                                                <Badge variant="info" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20">{product.categories?.name || '-'}</Badge>
                                             </td>
-                                            <td className="px-5 py-3.5 text-right">
+                                            <td className="px-6 py-4 text-right">
                                                 {hasDiscount ? (
                                                     <div>
-                                                        <p className="text-sm font-medium text-emerald-400">{formatRupiah(discountedPrice)}</p>
+                                                        <p className="text-sm font-bold text-emerald-400 tracking-tight">{formatRupiah(discountedPrice)}</p>
                                                         <p className="text-xs text-slate-500 line-through">{formatRupiah(product.price)}</p>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-sm font-medium text-white">{formatRupiah(product.price)}</p>
+                                                    <p className="text-sm font-bold text-slate-200 tracking-tight">{formatRupiah(product.price)}</p>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-3.5 text-right">
-                                                <Badge variant={product.stock <= 5 ? (product.stock <= 0 ? 'danger' : 'warning') : 'success'}>
-                                                    {product.stock}
+                                            <td className="px-6 py-4 text-right">
+                                                <Badge variant={product.stock <= 5 ? (product.stock <= 0 ? 'danger' : 'warning') : 'success'} className="shadow-sm">
+                                                    {product.stock} Stok
                                                 </Badge>
                                             </td>
-                                            <td className="px-5 py-3.5 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={() => openEditModal(product)} className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer">
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                                    <button onClick={() => openEditModal(product)} className="p-2 rounded-xl bg-slate-700/50 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-400 transition-all cursor-pointer">
                                                         <Edit2 size={16} />
                                                     </button>
-                                                    <button onClick={() => setDeleteConfirm(product)} className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors cursor-pointer">
+                                                    <button onClick={() => setDeleteConfirm(product)} className="p-2 rounded-xl bg-slate-700/50 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 transition-all cursor-pointer">
                                                         <Trash2 size={16} />
                                                     </button>
                                                 </div>

@@ -143,7 +143,7 @@ export default function CustomersPage() {
                 </div>
 
                 {isOwner && (
-                    <Button onClick={() => openModal()} className="relative w-full sm:w-auto shadow-lg shadow-indigo-500/20">
+                    <Button onClick={() => openModal()} className="relative w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25">
                         <Plus size={18} className="mr-2" />
                         Tambah Pelanggan
                     </Button>
@@ -151,31 +151,32 @@ export default function CustomersPage() {
             </div>
 
             {/* Actions & List */}
-            <Card className="p-0 overflow-hidden border-slate-800/60 shadow-xl shadow-black/10">
-                <div className="p-4 md:p-6 border-b border-slate-800/60 bg-slate-800/20">
+            <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5 shadow-xl shadow-black/10">
+                <div className="p-4 md:p-6 border-b border-white/5 bg-slate-800/40">
                     <div className="relative max-w-md">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <Input
                             placeholder="Cari nama atau no WA pelanggan..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="pl-10 bg-slate-800/50 border-slate-700"
+                            className="bg-slate-800/40 backdrop-blur-md border hover:border-slate-600 border-slate-700/50 shadow-inner"
+                            icon={Search}
                         />
                     </div>
                 </div>
 
                 <div className="overflow-x-auto">
-                    <Table>
+                    <table className="w-full border-collapse">
                         <thead>
-                            <tr className="bg-slate-800/40 text-left">
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Info Pelanggan</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Kontak & Alamat</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Poin</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Terdaftar Sejak</th>
-                                {isOwner && <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Aksi</th>}
+                            <tr className="bg-slate-800/40 border-b border-white/5 text-left">
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Info Pelanggan</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Kontak & Alamat</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Poin</th>
+                                <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Terdaftar Sejak</th>
+                                {isOwner && <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider text-right">Aksi</th>}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60">
+                        <tbody className="divide-y divide-white/5">
                             {loading ? (
                                 [...Array(3)].map((_, i) => (
                                     <tr key={i} className="animate-pulse">
@@ -193,7 +194,7 @@ export default function CustomersPage() {
                                             icon={Users}
                                             title="Belum Ada Pelanggan"
                                             description="Data pelanggan yang ditambahkan akan muncul di sini."
-                                            action={isOwner ? <Button onClick={() => openModal()} variant="secondary">Tambah Pelanggan</Button> : null}
+                                            action={isOwner ? <Button onClick={() => openModal()} variant="secondary" className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm">Tambah Pelanggan</Button> : null}
                                         />
                                     </td>
                                 </tr>
@@ -201,15 +202,15 @@ export default function CustomersPage() {
                                 customers.map((customer) => (
                                     <tr
                                         key={customer.id}
-                                        className="hover:bg-slate-800/30 transition-colors group"
+                                        className="hover:bg-slate-800/40 transition-colors duration-200 group"
                                     >
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
+                                                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-white/5 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
                                                     {customer.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <div className="font-medium text-white">{customer.name}</div>
+                                                    <p className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors">{customer.name}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -224,26 +225,26 @@ export default function CustomersPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <Badge variant="warning" className="flex items-center gap-1 w-max">
+                                            <Badge variant="warning" className="flex items-center gap-1 w-max shadow-sm">
                                                 <Star size={12} className="fill-amber-400 text-amber-400" />
-                                                {customer.total_points || 0}
+                                                {customer.total_points || 0} Poin
                                             </Badge>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-400">
+                                        <td className="px-6 py-4 text-sm font-medium text-slate-500">
                                             {formatDateTime(customer.created_at)}
                                         </td>
                                         {isOwner && (
                                             <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                                     <button
                                                         onClick={() => openModal(customer)}
-                                                        className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors cursor-pointer"
+                                                        className="p-2 rounded-xl bg-slate-700/50 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-400 transition-all cursor-pointer"
                                                     >
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button
                                                         onClick={() => setDeleteModal({ isOpen: true, id: customer.id })}
-                                                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                                        className="p-2 rounded-xl bg-slate-700/50 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 transition-all cursor-pointer"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
@@ -254,7 +255,7 @@ export default function CustomersPage() {
                                 ))
                             )}
                         </tbody>
-                    </Table>
+                    </table>
                 </div>
             </Card>
 
