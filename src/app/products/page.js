@@ -180,15 +180,46 @@ export default function ProductsPage() {
                 is_active: form.is_active,
                 discount: form.discount ? parseInt(form.discount) : 0,
                 discount_type: form.discount_type,
-                discount_start: form.discount_start || null,
-                discount_end: form.discount_end || null,
                 image_url: imageUrl || null,
             };
 
-            if (editProduct) {
-                await supabase.from('products').update(data).eq('id', editProduct.id);
-            } else {
-                await supabase.from('products').insert(data);
+            const saveProduct = async (payload) => {
+                if (editProduct) {
+                    const { error } = await supabase.from('products').update(payload).eq('id', editProduct.id);
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabase.from('products').insert(payload);
+                    if (error) throw error;
+                }
+            };
+
+            // Try saving with discount schedule fields first
+            let savedWithSchedule = false;
+            if (form.discount_start || form.discount_end) {
+                try {
+                    const fullData = { ...data };
+                    if (form.discount_start) fullData.discount_start = form.discount_start;
+                    if (form.discount_end) fullData.discount_end = form.discount_end;
+                    await saveProduct(fullData);
+                    savedWithSchedule = true;
+                } catch (saveErr) {
+                    // If error is about unknown columns, retry without schedule fields
+                    if (saveErr.message?.includes('column') || saveErr.code === '42703') {
+                        console.warn('Discount schedule columns not found in DB, saving without them');
+                    } else {
+                        throw saveErr;
+                    }
+                }
+            }
+
+            // Save without schedule fields if not yet saved
+            if (!savedWithSchedule) {
+                await saveProduct(data);
+            }
+
+            // Warn user if schedule data was lost
+            if (!savedWithSchedule && (form.discount_start || form.discount_end)) {
+                alert('Produk berhasil disimpan, namun jadwal diskon belum bisa disimpan karena kolom belum tersedia di database. Hubungi admin untuk menambahkan kolom discount_start & discount_end.');
             }
 
             setModalOpen(false);

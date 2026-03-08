@@ -58,35 +58,66 @@ export default function StockPage() {
     );
 
     const handleAdjust = async () => {
-        if (!form.product_id || !form.quantity) return;
+        if (!form.product_id || !form.quantity) {
+            alert('Pilih produk dan masukkan jumlah yang valid.');
+            return;
+        }
+        const qty = parseInt(form.quantity);
+        if (isNaN(qty) || qty <= 0) {
+            alert('Jumlah harus berupa angka positif.');
+            return;
+        }
+
         setSaving(true);
         try {
             const product = products.find((p) => p.id === parseInt(form.product_id));
-            if (!product) return;
+            if (!product) { alert('Produk tidak ditemukan.'); setSaving(false); return; }
 
-            const qty = parseInt(form.quantity);
             const newStock = form.type === 'in' ? product.stock + qty : product.stock - qty;
-            if (newStock < 0) { alert('Stok tidak boleh minus!'); setSaving(false); return; }
+            if (newStock < 0) { alert('Stok tidak boleh minus! Stok saat ini: ' + product.stock); setSaving(false); return; }
 
             await supabase.from('products').update({ stock: newStock, updated_at: new Date().toISOString() }).eq('id', product.id);
-            await supabase.from('stock_history').insert({
+
+            // Build notes string with supplier info
+            const noteParts = [
+                form.notes || (form.type === 'in' ? 'Stok masuk' : 'Stok keluar'),
+                form.supplier_name ? `Supplier: ${form.supplier_name}` : '',
+                form.purchase_price ? `Harga beli: Rp${parseInt(form.purchase_price).toLocaleString('id-ID')}/unit` : '',
+            ].filter(Boolean).join(' | ');
+
+            // Build stock history entry
+            const historyEntry = {
                 product_id: product.id,
                 user_id: user.id,
                 type: form.type === 'in' ? 'adjustment_in' : 'adjustment_out',
                 quantity: form.type === 'in' ? qty : -qty,
                 stock_before: product.stock,
                 stock_after: newStock,
-                notes: form.notes || (form.type === 'in' ? 'Stok masuk' : 'Stok keluar'),
-                supplier_name: form.supplier_name || null,
-                purchase_price: form.purchase_price ? parseInt(form.purchase_price) : null,
-            });
+                notes: noteParts,
+            };
+
+            // Try saving with supplier columns, fallback to notes-only
+            try {
+                const fullEntry = { ...historyEntry };
+                if (form.supplier_name) fullEntry.supplier_name = form.supplier_name;
+                if (form.purchase_price) fullEntry.purchase_price = parseInt(form.purchase_price);
+                await supabase.from('stock_history').insert(fullEntry);
+            } catch (insertErr) {
+                // If columns don't exist, save without them
+                if (insertErr.message?.includes('column') || insertErr.code === '42703') {
+                    console.warn('Supplier columns not in DB, saving supplier info in notes only');
+                    await supabase.from('stock_history').insert(historyEntry);
+                } else {
+                    throw insertErr;
+                }
+            }
 
             setForm({ product_id: '', type: 'in', quantity: '', notes: '', supplier_name: '', purchase_price: '' });
             setAdjustModal(false);
             loadData();
         } catch (err) {
-            console.error(err);
-            alert('Gagal update stok');
+            console.error('Stock adjustment error:', err);
+            alert('Gagal update stok: ' + (err.message || 'Terjadi kesalahan'));
         } finally {
             setSaving(false);
         }
@@ -156,10 +187,7 @@ export default function StockPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-white">{entry.products?.name}</p>
-                                    <p className="text-xs text-slate-500">
-                                        {entry.notes}
-                                        {entry.supplier_name && <span className="ml-1 text-indigo-400">• Supplier: {entry.supplier_name}</span>}
-                                    </p>
+                                    <p className="text-xs text-slate-500">{entry.notes}</p>
                                 </div>
                                 <div className="text-right">
                                     <p className={cn('text-sm font-bold', entry.quantity > 0 ? 'text-emerald-400' : 'text-red-400')}>

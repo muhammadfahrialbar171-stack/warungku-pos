@@ -161,6 +161,12 @@ export default function CashierPage() {
     // Calculate discounted price for a product
     const getDiscountedPrice = (product) => {
         if (!product.discount || product.discount <= 0) return product.price;
+        // Check scheduled discount dates
+        if (product.discount_start || product.discount_end) {
+            const now = new Date();
+            if (product.discount_start && new Date(product.discount_start) > now) return product.price;
+            if (product.discount_end && new Date(product.discount_end) < now) return product.price;
+        }
         if (product.discount_type === 'percentage') {
             return Math.round(product.price * (1 - product.discount / 100));
         }

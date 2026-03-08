@@ -1,19 +1,28 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import dayjs from 'dayjs';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+function getSupabaseClient(token) {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+}
 
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const month = searchParams.get('month'); // YYYY-MM
+        const month = searchParams.get('month');
         const authHeader = request.headers.get('authorization');
 
         if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const token = authHeader.replace('Bearer ', '');
-        const { data: { user } } = await supabase.auth.getUser(token);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const supabase = getSupabaseClient(token);
+        const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+        if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        // Get effective user ID
         const { data: profile } = await supabase
             .from('users')
             .select('role, owner_id')
@@ -40,6 +49,7 @@ export async function GET(request) {
 
         return NextResponse.json(data);
     } catch (error) {
+        console.error('GET /api/expenses error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
@@ -51,10 +61,10 @@ export async function POST(request) {
         const authHeader = request.headers.get('authorization');
         if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const token = authHeader.replace('Bearer ', '');
-        const { data: { user } } = await supabase.auth.getUser(token);
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const supabase = getSupabaseClient(token);
+        const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+        if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        // Get effective user ID
         const { data: profile } = await supabase
             .from('users')
             .select('role, owner_id')
@@ -63,15 +73,30 @@ export async function POST(request) {
 
         const ownerId = profile?.role === 'cashier' ? profile.owner_id : user.id;
 
+        if (!body.title || !body.amount || !body.expense_date) {
+            return NextResponse.json({ error: 'Field title, amount, dan tanggal wajib diisi' }, { status: 400 });
+        }
+
         const { data, error } = await supabase
             .from('expenses')
-            .insert({ ...body, user_id: ownerId })
+            .insert({
+                title: body.title,
+                amount: parseInt(body.amount),
+                category: body.category || 'lainnya',
+                notes: body.notes || null,
+                expense_date: body.expense_date,
+                user_id: ownerId,
+            })
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('POST /api/expenses insert error:', error);
+            throw error;
+        }
         return NextResponse.json(data);
     } catch (error) {
+        console.error('POST /api/expenses error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
