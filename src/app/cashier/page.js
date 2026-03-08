@@ -472,10 +472,10 @@ export default function CashierPage() {
                             <button
                                 onClick={() => setSelectedCategory('all')}
                                 className={cn(
-                                    'px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer',
+                                    'px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300 cursor-pointer',
                                     selectedCategory === 'all'
-                                        ? 'bg-indigo-500 text-white'
-                                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                        ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/25 scale-105'
+                                        : 'bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white'
                                 )}
                             >
                                 Semua
@@ -485,10 +485,10 @@ export default function CashierPage() {
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(String(cat.id))}
                                     className={cn(
-                                        'px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer',
+                                        'px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300 cursor-pointer',
                                         selectedCategory === String(cat.id)
-                                            ? 'bg-indigo-500 text-white'
-                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                            ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/25 scale-105'
+                                            : 'bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white'
                                     )}
                                 >
                                     {cat.name}
@@ -531,12 +531,12 @@ export default function CashierPage() {
                                         onClick={() => !outOfStock && addItem({ ...product, price: discountedPrice })}
                                         disabled={outOfStock}
                                         className={cn(
-                                            'relative p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer group',
+                                            'relative p-4 rounded-3xl border text-left transition-all duration-300 cursor-pointer overflow-hidden group',
                                             outOfStock
-                                                ? 'bg-slate-800/30 border-slate-800 opacity-50 cursor-not-allowed'
+                                                ? 'bg-slate-800/30 border-slate-800/50 opacity-60 cursor-not-allowed grayscale-[50%]'
                                                 : inCart
-                                                    ? 'bg-indigo-500/10 border-indigo-500/30 hover:border-indigo-500/50'
-                                                    : 'bg-slate-800/50 border-slate-700 hover:border-slate-600 hover:bg-slate-800/80'
+                                                    ? 'bg-indigo-500/10 border-indigo-500/50 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500'
+                                                    : 'bg-slate-800/40 backdrop-blur-xl border-white/5 hover:border-indigo-500/30 hover:bg-slate-800/60 hover:-translate-y-1 hover:shadow-xl'
                                         )}
                                     >
                                         {/* Product Image */}
@@ -634,9 +634,11 @@ export default function CashierPage() {
                     {/* Cart Items */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {items.length === 0 ? (
-                            <div className="text-center py-12 text-slate-500">
-                                <ShoppingCart size={40} className="mx-auto mb-3 opacity-30" />
-                                <p className="text-sm">Keranjang kosong</p>
+                            <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-70">
+                                <div className="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mb-4 ring-1 ring-white/10">
+                                    <ShoppingCart size={32} className="text-slate-400" />
+                                </div>
+                                <p className="text-sm font-medium">Keranjang kosong</p>
                                 <p className="text-xs mt-1">Pilih produk untuk menambahkan</p>
                             </div>
                         ) : (
