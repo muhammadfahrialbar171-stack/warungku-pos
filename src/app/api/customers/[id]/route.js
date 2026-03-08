@@ -34,7 +34,12 @@ export async function PUT(request, { params }) {
             .update(updateData)
             .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
+                return NextResponse.json({ error: 'Fitur Pelanggan belum aktif. Anda perlu menjalankan file migrasi SQL supabase-migration-v4-crm.sql di Supabase Anda.' }, { status: 500 });
+            }
+            throw error;
+        }
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('PUT /api/customers/[id] error:', error);
@@ -58,7 +63,12 @@ export async function DELETE(request, { params }) {
             .delete()
             .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
+                return NextResponse.json({ error: 'Fitur Pelanggan belum aktif. Anda perlu menjalankan file migrasi SQL supabase-migration-v4-crm.sql di Supabase Anda.' }, { status: 500 });
+            }
+            throw error;
+        }
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('DELETE /api/customers/[id] error:', error);

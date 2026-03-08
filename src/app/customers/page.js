@@ -95,7 +95,10 @@ export default function CustomersPage() {
                 body: JSON.stringify(formData),
             });
 
-            if (!res.ok) throw new Error('Gagal menyimpan pelanggan');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => null);
+                throw new Error(errData?.error || 'Gagal menyimpan pelanggan');
+            }
 
             setModal({ isOpen: false, data: null });
             loadCustomers();

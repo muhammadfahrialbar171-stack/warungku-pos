@@ -32,7 +32,12 @@ export async function GET(request) {
         }
 
         const { data, error } = await query;
-        if (error) throw error;
+        if (error) {
+            if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
+                return NextResponse.json([]); // Graceful fallback if table doesn't exist
+            }
+            throw error;
+        }
 
         return NextResponse.json(data);
     } catch (error) {
@@ -65,7 +70,12 @@ export async function POST(request) {
             .select()
             .single();
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === '42P01' || (error.message && error.message.includes('does not exist'))) {
+                return NextResponse.json({ error: 'Fitur Pelanggan belum aktif. Anda perlu menjalankan file migrasi SQL supabase-migration-v4-crm.sql di Supabase Anda.' }, { status: 500 });
+            }
+            throw error;
+        }
         return NextResponse.json(data);
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

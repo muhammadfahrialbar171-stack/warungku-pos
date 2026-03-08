@@ -241,22 +241,32 @@ export default function CashierPage() {
         try {
             const invoiceNumber = generateInvoice();
 
-            // Create transaction
-            const { data: transaction, error: txError } = await supabase
+            // Create transaction payload
+            const txPayload = {
+                user_id: user.id,
+                invoice_number: invoiceNumber,
+                subtotal: totalAmount,
+                discount_amount: txDiscountAmount,
+                total_amount: finalAmount,
+                total_items: totalItems,
+                payment_method: paymentMethod,
+                status: 'completed',
+                customer_id: selectedCustomerId || null,
+            };
+
+            let { data: transaction, error: txError } = await supabase
                 .from('transactions')
-                .insert({
-                    user_id: user.id,
-                    invoice_number: invoiceNumber,
-                    customer_id: selectedCustomerId || null,
-                    subtotal: totalAmount,
-                    discount_amount: txDiscountAmount,
-                    total_amount: finalAmount,
-                    total_items: totalItems,
-                    payment_method: paymentMethod,
-                    status: 'completed',
-                })
+                .insert(txPayload)
                 .select()
                 .single();
+
+            // Graceful fallback if customer_id column doesn't exist yet
+            if (txError && typeof txError.message === 'string' && txError.message.includes('customer_id')) {
+                delete txPayload.customer_id;
+                const retry = await supabase.from('transactions').insert(txPayload).select().single();
+                transaction = retry.data;
+                txError = retry.error;
+            }
 
             if (txError) throw txError;
 
@@ -442,12 +452,12 @@ export default function CashierPage() {
 
                                         {/* Price with discount */}
                                         {hasDiscount ? (
-                                            <div className="mt-1">
-                                                <p className="text-lg font-bold text-emerald-400">{formatRupiah(discountedPrice)}</p>
-                                                <p className="text-xs text-slate-500 line-through">{formatRupiah(product.price)}</p>
+                                            <div className="mt-1 w-full overflow-hidden">
+                                                <p className="text-lg font-bold text-emerald-400 truncate">{formatRupiah(discountedPrice)}</p>
+                                                <p className="text-xs text-slate-500 line-through truncate">{formatRupiah(product.price)}</p>
                                             </div>
                                         ) : (
-                                            <p className="text-lg font-bold text-indigo-400 mt-1">{formatRupiah(product.price)}</p>
+                                            <p className="text-lg font-bold text-indigo-400 mt-1 truncate w-full">{formatRupiah(product.price)}</p>
                                         )}
 
                                         <div className="flex items-center justify-between mt-2">
