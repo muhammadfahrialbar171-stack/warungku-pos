@@ -1,14 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Use service role to perform admin operations on Auth
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Lazy-initialize so this module doesn't crash at build time
+// when env vars are not yet available
+function getSupabaseAdmin() {
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+}
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
     try {
+        const supabaseAdmin = getSupabaseAdmin();
+
         // Verify the caller is authenticated
         const authHeader = request.headers.get('Authorization');
         if (!authHeader?.startsWith('Bearer ')) {
