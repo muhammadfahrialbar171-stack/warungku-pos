@@ -127,8 +127,12 @@ export default function CashierPage() {
                     const { data: userData } = await helperSb.auth.getUser();
                     if (!userData.user) continue;
 
+                    // Fetch full profile to get owner_id
+                    const { data: profile } = await helperSb.from('users').select('owner_id').eq('id', userData.user.id).single();
+                    const storeId = profile?.owner_id || userData.user.id;
+
                     // Execute Supabase checkout logic directly
-                    await processSupabaseCheckout({ ...payload, user_id: userData.user.id });
+                    await processSupabaseCheckout({ ...payload, user_id: storeId });
                     await removeTransactionFromQueue(tx.temp_id);
                     successCount++;
                 } catch (e) {
@@ -439,8 +443,11 @@ export default function CashierPage() {
             const totalCOGS = items.reduce((sum, item) => sum + ((item.cost_price || 0) * item.quantity), 0);
             const isCash = paymentMethod === 'cash';
 
+            // Cashiers should save transactions to their owner's account
+            const storeId = user.owner_id || user.id;
+
             const payload = {
-                user_id: user.id,
+                user_id: storeId,
                 invoiceNumber,
                 items: items.map(i => ({ ...i, product_id: i.id })),
                 totalAmount: finalAmount,
@@ -557,16 +564,26 @@ export default function CashierPage() {
                 <div className="flex-1 p-4 md:p-6 overflow-y-auto">
                     {/* Search & Filter */}
                     <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                        <div className="relative flex-1">
-                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                            <input
-                                id="cashier-search"
-                                type="text"
-                                placeholder="Cari produk... (F2)"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                            />
+                        <div className="flex gap-2 flex-1">
+                            <div className="relative flex-1">
+                                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                                <input
+                                    id="cashier-search"
+                                    type="text"
+                                    placeholder="Cari produk... (F2)"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                                />
+                            </div>
+                            <Button
+                                variant="secondary"
+                                className="flex-shrink-0"
+                                icon={ScanLine}
+                                onClick={() => setScannerModal(true)}
+                            >
+                                <span className="hidden sm:inline">Scan</span>
+                            </Button>
                         </div>
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hidden">
                             <button
@@ -595,14 +612,6 @@ export default function CashierPage() {
                                 </button>
                             ))}
                         </div>
-                        <Button
-                            variant="secondary"
-                            className="flex-shrink-0"
-                            icon={ScanLine}
-                            onClick={() => setScannerModal(true)}
-                        >
-                            <span className="hidden sm:inline">Scan</span>
-                        </Button>
                     </div>
 
                     {/* Product Grid */}
@@ -631,48 +640,55 @@ export default function CashierPage() {
                                         onClick={() => !outOfStock && addItem({ ...product, price: discountedPrice })}
                                         disabled={outOfStock}
                                         className={cn(
-                                            'relative p-4 rounded-3xl border text-left transition-all duration-300 cursor-pointer overflow-hidden group',
+                                            'relative p-4 rounded-3xl border text-left transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col',
                                             outOfStock
                                                 ? 'bg-slate-800/30 border-slate-800/50 opacity-60 cursor-not-allowed grayscale-[50%]'
                                                 : inCart
                                                     ? 'bg-indigo-500/10 border-indigo-500/50 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500'
-                                                    : 'bg-slate-800/40 backdrop-blur-xl border-white/5 hover:border-indigo-500/30 hover:bg-slate-800/60 hover:-translate-y-1 hover:shadow-xl'
+                                                    : 'bg-slate-800/40 backdrop-blur-xl border-white/5 hover:border-indigo-500/50 hover:bg-slate-800/60 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10'
                                         )}
                                     >
                                         {/* Product Image */}
-                                        <div className="w-full h-20 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 mb-3 overflow-hidden">
+                                        <div className="w-full aspect-[4/3] sm:aspect-square rounded-xl bg-white/5 mb-3 overflow-hidden p-2 flex items-center justify-center transition-transform group-hover:scale-105 duration-300">
                                             {product.image_url ? (
-                                                <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                                <img src={product.image_url} alt={product.name} className="w-full h-full object-contain drop-shadow-md" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center">
-                                                    <Package size={24} className="text-slate-600" />
+                                                    <Package size={24} className="text-slate-600 group-hover:text-indigo-400 transition-colors" />
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className="flex-1 min-h-0 flex flex-col justify-between">
-                                            <div>
-                                                <p className="text-[13px] font-medium text-white line-clamp-2 leading-snug break-words" title={product.name}>{product.name}</p>
+                                        <div className="flex-1 w-full flex flex-col justify-between">
+                                            <div className="w-full overflow-hidden">
+                                                <p className="text-[13px] sm:text-sm font-semibold text-white truncate w-full" title={product.name}>{product.name}</p>
 
                                                 {/* Price with discount */}
                                                 {hasDiscount ? (
                                                     <div className="mt-1 w-full">
-                                                        <p className="text-[13px] sm:text-[14px] font-bold text-emerald-400 tracking-tight break-all">{formatRupiah(discountedPrice)}</p>
+                                                        <p className="text-[14px] sm:text-base font-bold text-emerald-400 tracking-tight">{formatRupiah(discountedPrice)}</p>
                                                         <p className="text-[10px] text-slate-500 line-through truncate">{formatRupiah(product.price)}</p>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-[13px] sm:text-[14px] font-bold text-indigo-400 mt-1 tracking-tight w-full break-all">{formatRupiah(product.price)}</p>
+                                                    <div className="mt-1 w-full">
+                                                        <p className="text-[14px] sm:text-base font-bold text-indigo-400 tracking-tight">{formatRupiah(product.price)}</p>
+                                                    </div>
                                                 )}
                                             </div>
 
-                                            <div className="flex items-center justify-between mt-2">
-                                                <Badge variant={product.stock <= 5 ? 'warning' : 'success'} className="text-[9px] px-1.5 py-0.5">
+                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
+                                                <span className={cn(
+                                                    "text-[10px] px-2 py-0.5 rounded-full font-medium border",
+                                                    product.stock <= 5
+                                                        ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                                        : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                                )}>
                                                     Stok: {product.stock}
-                                                </Badge>
+                                                </span>
                                                 {hasDiscount && (
-                                                    <Badge variant="warning" className="text-[9px] px-1.5 py-0.5">
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
                                                         {product.discount_type === 'percentage' ? `${product.discount}%` : formatRupiah(product.discount)}
-                                                    </Badge>
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
