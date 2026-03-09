@@ -217,12 +217,15 @@ export default function CashierPage() {
         setLoading(true);
         try {
             if (navigator.onLine) {
+                // Cashiers should load products from their owner's ID
+                const storeId = user.owner_id || user.id;
+
                 // Fetch from Supabase
                 const [productsRes, categoriesRes, customersRes, userRes] = await Promise.all([
-                    supabase.from('products').select('*').eq('user_id', user.id).eq('is_active', true).order('name'),
-                    supabase.from('categories').select('*').eq('user_id', user.id).order('name'),
-                    supabase.from('customers').select('*').eq('user_id', user.id).order('name'),
-                    supabase.from('users').select('tax_rate').eq('id', user.id).single()
+                    supabase.from('products').select('*').eq('user_id', storeId).eq('is_active', true).order('name'),
+                    supabase.from('categories').select('*').eq('user_id', storeId).order('name'),
+                    supabase.from('customers').select('*').eq('user_id', storeId).order('name'),
+                    supabase.from('users').select('tax_rate').eq('id', storeId).single()
                 ]);
 
                 if (productsRes.error) throw productsRes.error;
