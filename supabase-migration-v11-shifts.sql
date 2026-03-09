@@ -1,6 +1,15 @@
 -- Migration: V11 - Shift Management
 -- Description: Create shifts table, add shift_id to transactions, and set up RLS policies.
 
+-- 0. Create handle_updated_at function if it doesn't exist
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 1. Create shifts table
 CREATE TABLE IF NOT EXISTS public.shifts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
