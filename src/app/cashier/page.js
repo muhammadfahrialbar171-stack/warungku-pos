@@ -21,6 +21,7 @@ import {
     PlayCircle,
     Clock,
     History,
+    LogOut,
 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { printReceipt, shareReceiptWhatsApp } from '@/lib/receipt';
@@ -75,6 +76,40 @@ export default function CashierPage() {
 
     // Tax Settings
     const [taxRate, setTaxRate] = useState(0);
+
+    // Shift Management State
+    const [activeShift, setActiveShift] = useState(null);
+    const [openShiftModal, setOpenShiftModal] = useState(false);
+    const [closeShiftModal, setCloseShiftModal] = useState(false);
+    const [startingCash, setStartingCash] = useState('');
+    const [actualCash, setActualCash] = useState('');
+
+    const loadActiveShift = useCallback(async () => {
+        if (!user) return;
+        try {
+            const { data, error } = await supabase
+                .from('shifts')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('status', 'open')
+                .single();
+
+            if (data) {
+                setActiveShift(data);
+                setOpenShiftModal(false);
+            } else {
+                setActiveShift(null);
+                setOpenShiftModal(true);
+            }
+        } catch (err) {
+            if (err.code !== 'PGRST116') {
+                console.error('Error loading active shift:', err);
+            } else {
+                setActiveShift(null);
+                setOpenShiftModal(true);
+            }
+        }
+    }, [user]);
 
     // Listen to network status
     useEffect(() => {
@@ -263,7 +298,79 @@ export default function CashierPage() {
 
     useEffect(() => {
         loadData();
-    }, [loadData]);
+        loadActiveShift();
+    }, [loadData, loadActiveShift]);
+
+    const handleOpenShift = async () => {
+        if (!user || !startingCash) return;
+        try {
+            setProcessing(true);
+            const storeId = user.owner_id || user.id;
+
+            const { data, error } = await supabase
+                .from('shifts')
+                .insert({
+                    store_id: storeId,
+                    user_id: user.id,
+                    starting_cash: parseInt(startingCash),
+                    status: 'open'
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setActiveShift(data);
+            setOpenShiftModal(false);
+            toast.success('Shift berhasil dibuka');
+        } catch (error) {
+            console.error('Open shift error:', error);
+            toast.error('Gagal membuka shift');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleCloseShift = async () => {
+        if (!activeShift || !actualCash) return;
+        try {
+            setProcessing(true);
+
+            // Calculate expected cash (Starting cash + all cash transactions during this shift)
+            const { data: txs } = await supabase
+                .from('transactions')
+                .select('paid_amount, change')
+                .eq('shift_id', activeShift.id)
+                .eq('payment_method', 'cash')
+                .eq('status', 'completed');
+
+            const cashEarned = (txs || []).reduce((sum, tx) => sum + (tx.paid_amount - tx.change), 0);
+            const expectedCash = Number(activeShift.starting_cash) + cashEarned;
+
+            const { error } = await supabase
+                .from('shifts')
+                .update({
+                    end_time: new Date().toISOString(),
+                    actual_cash: parseInt(actualCash),
+                    expected_cash: expectedCash,
+                    status: 'closed'
+                })
+                .eq('id', activeShift.id);
+
+            if (error) throw error;
+
+            setActiveShift(null);
+            setCloseShiftModal(false);
+            setActualCash('');
+            toast.success('Shift berhasil ditutup');
+            setOpenShiftModal(true); // Memaksa login shift baru jika di cashier
+        } catch (error) {
+            console.error('Close shift error:', error);
+            toast.error('Gagal menutup shift');
+        } finally {
+            setProcessing(false);
+        }
+    };
 
     const processSupabaseCheckout = async (payload) => {
         const txPayload = {
@@ -448,6 +555,7 @@ export default function CashierPage() {
 
             const payload = {
                 user_id: storeId,
+                shift_id: activeShift?.id || null,
                 invoiceNumber,
                 items: items.map(i => ({ ...i, product_id: i.id })),
                 totalAmount: finalAmount,
@@ -758,6 +866,16 @@ export default function CashierPage() {
                                 )}
                             </div>
                             <div className="flex items-center gap-1">
+                                {activeShift && (
+                                    <button
+                                        onClick={() => setCloseShiftModal(true)}
+                                        className="flex items-center gap-1 text-xs text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-1.5 rounded-lg font-medium transition-colors cursor-pointer mr-1"
+                                        title="Tutup Shift"
+                                    >
+                                        <LogOut size={14} />
+                                        Tutup Shift
+                                    </button>
+                                )}
                                 {heldBills.length > 0 && (
                                     <button
                                         onClick={() => setHoldModal(true)}
@@ -1132,6 +1250,71 @@ export default function CashierPage() {
                             </div>
                         ))
                     )}
+                </div>
+            </Modal>
+
+            {/* Open Shift Modal */}
+            <Modal isOpen={openShiftModal} onClose={() => { }} title="Buka Shift Kasir" disableOutsideClick>
+                <div className="space-y-4">
+                    <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                        <p className="text-sm text-indigo-300">
+                            Silakan masukkan jumlah Uang Modal / Saldo Awal yang ada di laci kasir saat ini untuk memulai shift.
+                        </p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">Modal Awal / Saldo Laci (Rp)</label>
+                        <input
+                            type="number"
+                            value={startingCash}
+                            onChange={(e) => setStartingCash(e.target.value)}
+                            placeholder="Contoh: 100000"
+                            className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                            autoFocus
+                        />
+                    </div>
+                    <Button
+                        className="w-full mt-2"
+                        onClick={handleOpenShift}
+                        loading={processing}
+                        disabled={!startingCash}
+                    >
+                        Buka Shift
+                    </Button>
+                </div>
+            </Modal>
+
+            {/* Close Shift Modal */}
+            <Modal isOpen={closeShiftModal} onClose={() => setCloseShiftModal(false)} title="Tutup Shift Kasir">
+                <div className="space-y-4">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                        <p className="text-sm text-rose-300">
+                            Hitung jumlah Uang Tunai aktual di dalam laci kasir sekarang dan masukkan nilainya di bawah ini untuk menutup shift.
+                        </p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">Uang Fisik di Laci (Rp)</label>
+                        <input
+                            type="number"
+                            value={actualCash}
+                            onChange={(e) => setActualCash(e.target.value)}
+                            placeholder="Contoh: 1540000"
+                            className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <Button variant="secondary" className="flex-1" onClick={() => setCloseShiftModal(false)}>
+                            Batal
+                        </Button>
+                        <Button
+                            className="flex-1 bg-rose-500 hover:bg-rose-600 focus:ring-rose-500/50 shadow-rose-500/25"
+                            onClick={handleCloseShift}
+                            loading={processing}
+                            disabled={!actualCash}
+                        >
+                            Akhiri Shift
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         </div>

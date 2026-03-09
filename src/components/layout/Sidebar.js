@@ -16,6 +16,7 @@ import {
     Users,
     Wallet,
     Barcode,
+    Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -26,6 +27,7 @@ const navItems = [
     { href: '/products', label: 'Produk', icon: Package, ownerOnly: true },
     { href: '/stock', label: 'Stok', icon: Boxes, ownerOnly: true },
     { href: '/transactions', label: 'Transaksi', icon: Receipt },
+    { href: '/shifts', label: 'Shift Kasir', icon: Clock, ownerOnly: true },
     { href: '/customers', label: 'Pelanggan', icon: Users },
     { href: '/expenses', label: 'Pengeluaran', icon: Wallet },
     { href: '/reports', label: 'Laporan', icon: BarChart3, ownerOnly: true },
