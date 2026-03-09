@@ -31,7 +31,7 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, color = 'in
             <div className="flex items-center justify-between gap-2 sm:gap-3 z-10 relative h-full">
                 <div className="flex flex-col justify-center h-full space-y-2 flex-1 min-w-0 pr-1">
                     <p className="text-xs sm:text-sm font-medium text-slate-400 truncate" title={title}>{title}</p>
-                    <p className="text-lg sm:text-2xl font-bold text-white tracking-tight drop-shadow-md whitespace-nowrap overflow-hidden text-ellipsis" title={value}>{value}</p>
+                    <p className="text-xl sm:text-[22px] font-bold text-white tracking-tight drop-shadow-md break-words" title={value}>{value}</p>
 
                     {/* Render trend if provided */}
                     {trend !== undefined && trend !== null && (
