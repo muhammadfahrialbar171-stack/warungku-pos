@@ -295,7 +295,7 @@ export default function CustomersPage() {
                                                         <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
                                                             <Loader2 size={16} className="animate-spin" /> Memuat...
                                                         </div>
-                                                    ) : !txHistory[customer.id] || txHistory[customer.id].length === 0 ? (
+                                                    ) : !txHistory[customer.id] || !Array.isArray(txHistory[customer.id]) || txHistory[customer.id].length === 0 ? (
                                                         <p className="text-sm text-slate-500 py-2">Tidak ada riwayat transaksi.</p>
                                                     ) : (
                                                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
