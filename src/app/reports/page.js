@@ -171,11 +171,10 @@ function ReportsPage() {
                 borderWidth: 3,
                 pointBackgroundColor: 'rgba(99, 102, 241, 1)',
                 pointBorderColor: '#fff',
-                pointBorderWidth: 2,
                 pointRadius: 4,
                 pointHoverRadius: 6,
                 fill: true,
-                tension: 0.4,
+                tension: 0.5,
             },
         ],
     };
@@ -193,10 +192,19 @@ function ReportsPage() {
                     gradient.addColorStop(1, 'rgba(34, 197, 94, 0.2)');
                     return gradient;
                 },
-                borderColor: 'rgba(34, 197, 94, 1)',
+                borderColor: (context) => {
+                    const ctx = context.chart.ctx;
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                    gradient.addColorStop(0, 'rgba(16, 185, 129, 1)');
+                    gradient.addColorStop(1, 'rgba(34, 197, 94, 0.5)');
+                    return gradient;
+                },
                 borderWidth: 2,
-                borderRadius: 6,
+                borderRadius: 8,
                 borderSkipped: false,
+                barPercentage: 0.6,
+                categoryPercentage: 0.8,
+                hoverBackgroundColor: 'rgba(34, 197, 94, 0.9)',
             },
         ],
     };
@@ -226,20 +234,22 @@ function ReportsPage() {
                         return `Jumlah: ${context.raw} Transaksi`;
                     }
                 }
-            },
+            }
         },
         scales: {
             x: {
                 grid: { display: false },
-                ticks: { color: '#94a3b8', font: { size: 11 } },
+                ticks: { color: '#94a3b8', font: { size: 11, family: "'Inter', sans-serif" } },
+                border: { display: false }
             },
             y: {
-                grid: { color: 'rgba(255, 255, 255, 0.05)', borderDash: [5, 5] },
-                border: { dash: [5, 5] },
+                grid: { color: 'rgba(255, 255, 255, 0.05)', borderDash: [5, 5], drawBorder: false },
+                border: { display: false },
                 beginAtZero: true,
                 ticks: {
                     color: '#94a3b8',
-                    font: { size: 11 },
+                    font: { size: 11, family: "'Inter', sans-serif" },
+                    padding: 10,
                     callback: (value) => {
                         if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
                         if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
@@ -278,7 +288,7 @@ function ReportsPage() {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center" >
                 <div className="flex gap-2">
                     <button
                         onClick={() => setPeriod('daily')}
@@ -305,121 +315,125 @@ function ReportsPage() {
                     <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
                         className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner" />
                 </div>
-            </div>
+            </div >
 
             {/* Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            < div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" >
                 <StatCard title="Total Pendapatan" value={formatRupiah(totalSales)} icon={DollarSign} color="indigo" />
                 <StatCard title="Total HPP (Modal)" value={formatRupiah(totalCogs)} icon={Wallet} color="amber" />
                 <StatCard title="Laba Kotor" value={formatRupiah(grossProfit)} icon={TrendingUp} color="emerald" />
                 <StatCard title="Total Pengeluaran" value={formatRupiah(totalExpenses)} icon={Wallet} color="rose" />
                 <StatCard title="Laba Bersih" value={formatRupiah(netProfit)} icon={PiggyBank} color="emerald" />
                 <StatCard title="Transaksi" value={totalTransactions} icon={ShoppingBag} color="blue" />
-            </div>
+            </div >
 
             {/* Charts */}
-            {loading ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="skeleton h-80 rounded-2xl" />
-                    <div className="skeleton h-80 rounded-2xl" />
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
-                        <h3 className="text-lg font-bold text-white drop-shadow-sm mb-4">Grafik Penjualan</h3>
-                        <div className="h-64">
-                            {labels.length > 0 ? (
-                                <Line data={chartData} options={chartOptions} />
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-slate-500 text-sm">
-                                    Tidak ada data untuk periode ini
-                                </div>
-                            )}
-                        </div>
-                    </Card>
-                    <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
-                        <h3 className="text-lg font-bold text-white drop-shadow-sm mb-4">Grafik Transaksi</h3>
-                        <div className="h-64">
-                            {labels.length > 0 ? (
-                                <Bar data={countChartData} options={chartOptions} />
-                            ) : (
-                                <div className="h-full flex items-center justify-center text-slate-500 text-sm">
-                                    Tidak ada data untuk periode ini
-                                </div>
-                            )}
-                        </div>
-                    </Card>
-                </div>
-            )}
+            {
+                loading ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="skeleton h-80 rounded-2xl" />
+                        <div className="skeleton h-80 rounded-2xl" />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
+                            <h3 className="text-lg font-bold text-white drop-shadow-sm mb-4">Grafik Penjualan</h3>
+                            <div className="h-64">
+                                {labels.length > 0 ? (
+                                    <Line data={chartData} options={chartOptions} />
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                                        Tidak ada data untuk periode ini
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                        <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
+                            <h3 className="text-lg font-bold text-white drop-shadow-sm mb-4">Grafik Transaksi</h3>
+                            <div className="h-64">
+                                {labels.length > 0 ? (
+                                    <Bar data={countChartData} options={chartOptions} />
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                                        Tidak ada data untuk periode ini
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+                )
+            }
 
             {/* Sales Table */}
-            {!loading && labels.length > 0 && (
-                <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5 shadow-xl shadow-black/10 mt-6">
-                    <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/5 bg-slate-800/40">
-                        <h3 className="text-lg font-bold text-white drop-shadow-sm">Ringkasan {period === 'daily' ? 'Harian' : 'Bulanan'}</h3>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                icon={Download}
-                                onClick={() => exportDailySummaryToExcel(groupedData, labels, `ringkasan-${period}-${dateFrom}-${dateTo}`)}
-                                className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm"
-                            >
-                                Excel
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                size="sm"
-                                icon={Download}
-                                onClick={() => exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, user?.store_name)}
-                                className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm"
-                            >
-                                PDF
-                            </Button>
+            {
+                !loading && labels.length > 0 && (
+                    <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5 shadow-xl shadow-black/10 mt-6">
+                        <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/5 bg-slate-800/40">
+                            <h3 className="text-lg font-bold text-white drop-shadow-sm">Ringkasan {period === 'daily' ? 'Harian' : 'Bulanan'}</h3>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    icon={Download}
+                                    onClick={() => exportDailySummaryToExcel(groupedData, labels, `ringkasan-${period}-${dateFrom}-${dateTo}`)}
+                                    className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm"
+                                >
+                                    Excel
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    icon={Download}
+                                    onClick={() => exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, user?.store_name)}
+                                    className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm"
+                                >
+                                    PDF
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="bg-slate-800/40 border-b border-white/5 text-left">
-                                    <th className="text-left text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Periode</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Transaksi</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Pendapatan</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">HPP (Modal)</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Laba Kotor</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Pengeluaran</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Laba Bersih</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {labels.map((label) => (
-                                    <tr key={label} className="hover:bg-slate-800/40 transition-colors duration-200 group">
-                                        <td className="px-6 py-4 text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors">{label}</td>
-                                        <td className="px-6 py-4 text-right text-sm text-slate-400">{groupedData[label].count}</td>
-                                        <td className="px-6 py-4 text-right text-sm font-bold text-indigo-400">{formatRupiah(groupedData[label].sales)}</td>
-                                        <td className="px-6 py-4 text-right text-sm font-bold text-amber-500">{formatRupiah(groupedData[label].cogs)}</td>
-                                        <td className="px-6 py-4 text-right text-sm font-bold text-emerald-500">{formatRupiah(groupedData[label].gross)}</td>
-                                        <td className="px-6 py-4 text-right text-sm font-bold text-rose-400">{formatRupiah(groupedData[label].expense)}</td>
-                                        <td className="px-6 py-4 text-right text-sm font-bold text-emerald-400 tracking-tight">{formatRupiah(groupedData[label].profit)}</td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-800/40 border-b border-white/5 text-left">
+                                        <th className="text-left text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Periode</th>
+                                        <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Transaksi</th>
+                                        <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Pendapatan</th>
+                                        <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">HPP (Modal)</th>
+                                        <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Laba Kotor</th>
+                                        <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Pengeluaran</th>
+                                        <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Laba Bersih</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr className="border-t border-white/10 bg-slate-800/60">
-                                    <td className="px-6 py-5 text-sm font-bold text-white uppercase tracking-wider">Total</td>
-                                    <td className="px-6 py-5 text-right text-sm font-bold text-white">{totalTransactions}</td>
-                                    <td className="px-6 py-5 text-right text-sm font-bold text-indigo-400 drop-shadow-sm">{formatRupiah(totalSales)}</td>
-                                    <td className="px-6 py-5 text-right text-sm font-bold text-amber-500 drop-shadow-sm">{formatRupiah(totalCogs)}</td>
-                                    <td className="px-6 py-5 text-right text-sm font-bold text-emerald-500 drop-shadow-sm">{formatRupiah(grossProfit)}</td>
-                                    <td className="px-6 py-5 text-right text-sm font-bold text-rose-400 drop-shadow-sm">{formatRupiah(totalExpenses)}</td>
-                                    <td className="px-6 py-5 text-right text-sm font-bold text-emerald-400 drop-shadow-sm text-base tracking-tight">{formatRupiah(netProfit)}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </Card>
-            )}
-        </div>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {labels.map((label) => (
+                                        <tr key={label} className="hover:bg-slate-800/40 transition-colors duration-200 group">
+                                            <td className="px-6 py-4 text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors">{label}</td>
+                                            <td className="px-6 py-4 text-right text-sm text-slate-400">{groupedData[label].count}</td>
+                                            <td className="px-6 py-4 text-right text-sm font-bold text-indigo-400">{formatRupiah(groupedData[label].sales)}</td>
+                                            <td className="px-6 py-4 text-right text-sm font-bold text-amber-500">{formatRupiah(groupedData[label].cogs)}</td>
+                                            <td className="px-6 py-4 text-right text-sm font-bold text-emerald-500">{formatRupiah(groupedData[label].gross)}</td>
+                                            <td className="px-6 py-4 text-right text-sm font-bold text-rose-400">{formatRupiah(groupedData[label].expense)}</td>
+                                            <td className="px-6 py-4 text-right text-sm font-bold text-emerald-400 tracking-tight">{formatRupiah(groupedData[label].profit)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr className="border-t border-white/10 bg-slate-800/60">
+                                        <td className="px-6 py-5 text-sm font-bold text-white uppercase tracking-wider">Total</td>
+                                        <td className="px-6 py-5 text-right text-sm font-bold text-white">{totalTransactions}</td>
+                                        <td className="px-6 py-5 text-right text-sm font-bold text-indigo-400 drop-shadow-sm">{formatRupiah(totalSales)}</td>
+                                        <td className="px-6 py-5 text-right text-sm font-bold text-amber-500 drop-shadow-sm">{formatRupiah(totalCogs)}</td>
+                                        <td className="px-6 py-5 text-right text-sm font-bold text-emerald-500 drop-shadow-sm">{formatRupiah(grossProfit)}</td>
+                                        <td className="px-6 py-5 text-right text-sm font-bold text-rose-400 drop-shadow-sm">{formatRupiah(totalExpenses)}</td>
+                                        <td className="px-6 py-5 text-right text-sm font-bold text-emerald-400 drop-shadow-sm text-base tracking-tight">{formatRupiah(netProfit)}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </Card>
+                )
+            }
+        </div >
     );
 }
 

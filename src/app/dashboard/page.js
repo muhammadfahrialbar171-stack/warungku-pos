@@ -156,12 +156,12 @@ function DashboardPage() {
                     gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
                     return gradient;
                 },
-                borderWidth: 2.5,
+                borderWidth: 3,
                 fill: true,
-                tension: 0.4,
+                tension: 0.5,
                 pointRadius: 4,
                 pointBackgroundColor: 'rgba(99, 102, 241, 1)',
-                pointBorderColor: '#1e293b',
+                pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 pointHoverRadius: 6,
             },
