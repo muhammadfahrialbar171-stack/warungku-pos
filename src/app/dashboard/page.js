@@ -219,6 +219,15 @@ function DashboardPage() {
         ? Math.round(((stats.todaySales - yesterdaySales) / yesterdaySales) * 100)
         : 0;
 
+    // Get time-based greeting
+    const getGreeting = () => {
+        const hour = dayjs().hour();
+        if (hour < 11) return 'Selamat Pagi 🌅';
+        if (hour < 15) return 'Selamat Siang ☀️';
+        if (hour < 18) return 'Selamat Sore 🌤️';
+        return 'Selamat Malam 🌙';
+    };
+
     if (loading) {
         return (
             <div className="space-y-6 animate-fade-in">
@@ -239,7 +248,9 @@ function DashboardPage() {
         <div className="space-y-6 animate-fade-in">
             {/* Page Header */}
             <div>
-                <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    {getGreeting()}
+                </h1>
                 <p className="text-slate-400 text-sm mt-1">Ringkasan bisnis Anda hari ini</p>
             </div>
 
@@ -332,23 +343,40 @@ function DashboardPage() {
                         {recentTransactions.length === 0 ? (
                             <p className="text-sm text-slate-500 py-4 text-center">Belum ada transaksi</p>
                         ) : (
-                            recentTransactions.map((tx) => (
-                                <div
-                                    key={tx.id}
-                                    className="flex items-center justify-between p-3 rounded-xl bg-slate-800/30 hover:bg-slate-800/60 transition-colors"
-                                >
-                                    <div>
-                                        <p className="text-sm font-medium text-white">{tx.invoice_number}</p>
-                                        <p className="text-xs text-slate-500">{formatDate(tx.created_at, 'DD MMM, HH:mm')}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-semibold text-emerald-400">{formatRupiah(tx.total_amount)}</p>
-                                        <Badge variant={tx.status === 'completed' ? 'success' : 'warning'} className="text-[10px]">
-                                            {tx.status === 'completed' ? 'Lunas' : 'Pending'}
-                                        </Badge>
-                                    </div>
-                                </div>
-                            ))
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-slate-700/50 text-xs text-slate-400 uppercase tracking-wider">
+                                            <th className="pb-3 font-medium">Invoice</th>
+                                            <th className="pb-3 font-medium">Waktu</th>
+                                            <th className="pb-3 font-medium text-right">Total</th>
+                                            <th className="pb-3 font-medium text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-800/50">
+                                        {recentTransactions.map((tx) => (
+                                            <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors group">
+                                                <td className="py-3">
+                                                    <span className="text-sm font-semibold text-white group-hover:text-indigo-400 transition-colors">
+                                                        {tx.invoice_number}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 text-xs text-slate-400">
+                                                    {formatDate(tx.created_at, 'DD MMM, HH:mm')}
+                                                </td>
+                                                <td className="py-3 text-sm font-medium text-emerald-400 text-right">
+                                                    {formatRupiah(tx.total_amount)}
+                                                </td>
+                                                <td className="py-3 text-center">
+                                                    <Badge variant={tx.status === 'completed' ? 'success' : 'warning'} className="text-[10px] px-2 py-0.5">
+                                                        {tx.status === 'completed' ? 'Lunas' : 'Pending'}
+                                                    </Badge>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </Card>

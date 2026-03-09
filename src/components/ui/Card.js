@@ -29,13 +29,18 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, color = 'in
     return (
         <Card className={cn('relative overflow-hidden', className)}>
             <div className="flex items-center justify-between gap-2 sm:gap-3 z-10 relative h-full">
-                <div className="flex flex-col justify-center h-full space-y-1.5 flex-1 min-w-0 pr-1">
+                <div className="flex flex-col justify-center h-full space-y-2 flex-1 min-w-0 pr-1">
                     <p className="text-xs sm:text-sm font-medium text-slate-400 truncate" title={title}>{title}</p>
-                    <p className="text-lg sm:text-xl font-bold text-white tracking-tight drop-shadow-md whitespace-nowrap overflow-hidden text-ellipsis" title={value}>{value}</p>
-                    {trend !== undefined && (
-                        <div className={cn('flex items-center gap-1 text-xs font-semibold inline-flex w-fit px-2 py-0.5 mt-auto rounded-full bg-slate-800/50 backdrop-blur-md border', trendUp ? 'text-emerald-400 border-emerald-500/30' : 'text-rose-400 border-rose-500/30')}>
-                            <span>{trendUp ? '↑' : '↓'}</span>
-                            <span>{trend}% dari kemarin</span>
+                    <p className="text-lg sm:text-2xl font-bold text-white tracking-tight drop-shadow-md whitespace-nowrap overflow-hidden text-ellipsis" title={value}>{value}</p>
+
+                    {/* Render trend if provided */}
+                    {trend !== undefined && trend !== null && (
+                        <div className={cn(
+                            'flex items-center gap-1 text-[10px] sm:text-xs font-semibold w-fit px-2 py-0.5 rounded-full bg-slate-800/50 backdrop-blur-md border',
+                            trendUp ? 'text-emerald-400 border-emerald-500/30' : 'text-rose-400 border-rose-500/30'
+                        )}>
+                            <span>{trendUp ? '▲' : '▼'}</span>
+                            <span>{Math.abs(trend)}% vs kemarin</span>
                         </div>
                     )}
                 </div>
