@@ -16,6 +16,22 @@ export function formatRupiah(amount) {
 }
 
 /**
+ * Format number to concise Indonesian Rupiah (e.g., 1.5 Jt)
+ */
+export function formatRupiahShort(amount) {
+    if (amount >= 1000000000) {
+        return `Rp ${(amount / 1000000000).toFixed(1).replace('.0', '')} M`;
+    }
+    if (amount >= 1000000) {
+        return `Rp ${(amount / 1000000).toFixed(1).replace('.0', '')} Jt`;
+    }
+    if (amount >= 1000) {
+        return `Rp ${(amount / 1000).toFixed(0)} Rb`;
+    }
+    return formatRupiah(amount);
+}
+
+/**
  * Format date with dayjs
  */
 export function formatDate(date, format = 'DD MMM YYYY') {

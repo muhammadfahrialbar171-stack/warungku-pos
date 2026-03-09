@@ -14,7 +14,7 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { formatRupiah, formatDate } from '@/lib/utils';
+import { formatRupiah, formatRupiahShort, formatDate } from '@/lib/utils';
 import dayjs from 'dayjs';
 import {
     Chart as ChartJS,
@@ -258,7 +258,7 @@ function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
                     title="Penjualan Hari Ini"
-                    value={formatRupiah(stats.todaySales)}
+                    value={formatRupiahShort(stats.todaySales)}
                     icon={DollarSign}
                     color="indigo"
                     trend={todayTrend !== 0 ? Math.abs(todayTrend) : undefined}
@@ -278,7 +278,7 @@ function DashboardPage() {
                 />
                 <StatCard
                     title="Omzet Bulan Ini"
-                    value={formatRupiah(stats.monthSales)}
+                    value={formatRupiahShort(stats.monthSales)}
                     icon={TrendingUp}
                     color="rose"
                 />
