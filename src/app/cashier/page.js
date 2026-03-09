@@ -86,6 +86,14 @@ export default function CashierPage() {
 
     const loadActiveShift = useCallback(async () => {
         if (!user) return;
+
+        // Bypassing shift requirement for owner accounts
+        if (user.role === 'owner' || !user.role) {
+            setActiveShift(null);
+            setOpenShiftModal(false);
+            return;
+        }
+
         try {
             const { data, error } = await supabase
                 .from('shifts')
@@ -363,7 +371,9 @@ export default function CashierPage() {
             setCloseShiftModal(false);
             setActualCash('');
             toast.success('Shift berhasil ditutup');
-            setOpenShiftModal(true); // Memaksa login shift baru jika di cashier
+            if (user?.role === 'cashier') {
+                setOpenShiftModal(true); // Memaksa login shift baru jika di cashier
+            }
         } catch (error) {
             console.error('Close shift error:', error);
             toast.error('Gagal menutup shift');
