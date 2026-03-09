@@ -168,7 +168,7 @@ function ReportsPage() {
                     return gradient;
                 },
                 borderColor: 'rgba(99, 102, 241, 1)',
-                borderWidth: 2,
+                borderWidth: 3,
                 pointBackgroundColor: 'rgba(99, 102, 241, 1)',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
@@ -186,10 +186,17 @@ function ReportsPage() {
             {
                 label: 'Transaksi',
                 data: countData,
-                backgroundColor: 'rgba(34, 197, 94, 0.3)',
+                backgroundColor: (context) => {
+                    const ctx = context.chart.ctx;
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.8)');
+                    gradient.addColorStop(1, 'rgba(34, 197, 94, 0.2)');
+                    return gradient;
+                },
                 borderColor: 'rgba(34, 197, 94, 1)',
                 borderWidth: 2,
-                borderRadius: 8,
+                borderRadius: 6,
+                borderSkipped: false,
             },
         ],
     };
@@ -197,6 +204,10 @@ function ReportsPage() {
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -207,15 +218,25 @@ function ReportsPage() {
                 bodyColor: '#94a3b8',
                 cornerRadius: 12,
                 padding: 12,
+                callbacks: {
+                    label: (context) => {
+                        if (context.dataset.label === 'Penjualan') {
+                            return `Penjualan: ${formatRupiah(context.raw)}`;
+                        }
+                        return `Jumlah: ${context.raw} Transaksi`;
+                    }
+                }
             },
         },
         scales: {
             x: {
-                grid: { color: 'rgba(71, 85, 105, 0.2)' },
+                grid: { display: false },
                 ticks: { color: '#94a3b8', font: { size: 11 } },
             },
             y: {
-                grid: { color: 'rgba(71, 85, 105, 0.2)' },
+                grid: { color: 'rgba(255, 255, 255, 0.05)', borderDash: [5, 5] },
+                border: { dash: [5, 5] },
+                beginAtZero: true,
                 ticks: {
                     color: '#94a3b8',
                     font: { size: 11 },

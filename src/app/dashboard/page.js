@@ -149,7 +149,13 @@ function DashboardPage() {
             {
                 data: weeklyData.map((d) => d.amount),
                 borderColor: 'rgba(99, 102, 241, 1)',
-                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                backgroundColor: (context) => {
+                    const ctx = context.chart.ctx;
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+                    gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+                    return gradient;
+                },
                 borderWidth: 2.5,
                 fill: true,
                 tension: 0.4,
@@ -165,6 +171,10 @@ function DashboardPage() {
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -173,8 +183,8 @@ function DashboardPage() {
                 borderWidth: 1,
                 titleColor: '#f1f5f9',
                 bodyColor: '#94a3b8',
-                cornerRadius: 10,
-                padding: 10,
+                cornerRadius: 12,
+                padding: 12,
                 callbacks: {
                     title: (items) => weeklyData[items[0]?.dataIndex]?.fullDate || '',
                     label: (item) => `Penjualan: ${formatRupiah(item.raw)}`,
@@ -187,7 +197,9 @@ function DashboardPage() {
                 ticks: { color: '#64748b', font: { size: 11 } },
             },
             y: {
-                grid: { color: 'rgba(71, 85, 105, 0.15)' },
+                grid: { color: 'rgba(255, 255, 255, 0.05)', borderDash: [5, 5] },
+                border: { dash: [5, 5] },
+                beginAtZero: true,
                 ticks: {
                     color: '#64748b',
                     font: { size: 10 },
