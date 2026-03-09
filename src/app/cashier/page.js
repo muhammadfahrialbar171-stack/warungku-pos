@@ -557,6 +557,46 @@ export default function CashierPage() {
         }
     };
 
+    // --- Keyboard Shortcuts ---
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // F4: Focus search
+            if (e.key === 'F4') {
+                e.preventDefault();
+                document.getElementById('cashier-search')?.focus();
+            }
+
+            // F8: Trigger checkout (if cart has items and no modals are open)
+            if (e.key === 'F8') {
+                e.preventDefault();
+                if (items.length > 0 && !checkoutModal && !successModal && !scannerModal && !holdModal) {
+                    setPaymentMethod('cash');
+                    setPaidAmount('');
+                    setCheckoutModal(true);
+                    setTimeout(() => document.getElementById('paid-amount-input')?.focus(), 100);
+                }
+            }
+
+            // Escape: Close modals or clear search
+            if (e.key === 'Escape') {
+                if (checkoutModal) setCheckoutModal(false);
+                else if (scannerModal) setScannerModal(false);
+                else if (holdModal) setHoldModal(false);
+                else if (successModal) {
+                    setSuccessModal(false);
+                    setLastInvoice('');
+                }
+                else if (document.activeElement.id === 'cashier-search') {
+                    setSearch('');
+                    document.getElementById('cashier-search').blur();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [items.length, checkoutModal, successModal, scannerModal, holdModal, setSearch]);
+
     return (
         <div className="animate-fade-in -mx-4 md:-mx-6 -mt-4 md:-mt-6">
             <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] md:h-[calc(100vh-73px)]">
@@ -570,7 +610,7 @@ export default function CashierPage() {
                                 <input
                                     id="cashier-search"
                                     type="text"
-                                    placeholder="Cari produk... (F2)"
+                                    placeholder="Cari produk... (F4)"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
@@ -855,7 +895,7 @@ export default function CashierPage() {
                                     className="flex-1 text-base"
                                     onClick={() => setCheckoutModal(true)}
                                 >
-                                    Bayar (F9)
+                                    Bayar (F8)
                                 </Button>
                             </div>
                         </div>
