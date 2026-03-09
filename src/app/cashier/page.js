@@ -640,7 +640,7 @@ export default function CashierPage() {
                                         onClick={() => !outOfStock && addItem({ ...product, price: discountedPrice })}
                                         disabled={outOfStock}
                                         className={cn(
-                                            'relative p-4 rounded-3xl border text-left transition-all duration-300 cursor-pointer overflow-hidden group flex flex-col',
+                                            'relative p-4 rounded-3xl border text-left transition-all duration-300 cursor-pointer group flex flex-col',
                                             outOfStock
                                                 ? 'bg-slate-800/30 border-slate-800/50 opacity-60 cursor-not-allowed grayscale-[50%]'
                                                 : inCart
