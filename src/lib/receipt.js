@@ -5,7 +5,7 @@ import { formatRupiah, formatDateTime } from '@/lib/utils';
 /**
  * Generate receipt HTML and open print dialog
  */
-export function printReceipt({ storeName, kasirName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, taxAmount, createdAt, receiptHeader, receiptFooter }) {
+export function printReceipt({ storeName, kasirName, invoiceNumber, customerName, items, totalAmount, totalItems, paymentMethod, paidAmount, change, taxAmount, createdAt, receiptHeader, receiptFooter, logoUrl }) {
   const paymentLabel = { cash: 'Tunai', debit: 'Debit', qris: 'QRIS' }[paymentMethod] || paymentMethod;
   const dateStr = formatDateTime(createdAt || new Date());
 
@@ -35,6 +35,7 @@ export function printReceipt({ storeName, kasirName, invoiceNumber, customerName
     .bold { font-weight: bold; }
     
     .header { margin-bottom: 6px; }
+    .store-logo { max-width: 60mm; max-height: 30mm; margin: 0 auto 6px auto; display: block; filter: grayscale(100%) contrast(1.2); object-fit: contain; }
     .store-name { font-size: 16px; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
     .store-subtitle { font-size: 11px; margin-bottom: 2px; }
     
@@ -75,6 +76,7 @@ export function printReceipt({ storeName, kasirName, invoiceNumber, customerName
 </head>
 <body>
   <div class="center header">
+    ${logoUrl ? `<img src="${logoUrl}" class="store-logo" alt="Store Logo" />` : ''}
     <div class="store-name">${storeName || 'WarungKu POS'}</div>
     ${receiptHeader ? `<div class="store-subtitle">${receiptHeader.replace(/\n/g, '<br>')}</div>` : ''}
   </div>

@@ -55,8 +55,22 @@ export default function AppShell({ children }) {
     }
 
     // Authenticated layout
+
+    // Theme setup
+    const themeColor = user?.theme_color || 'rose';
+
+    // Convert Tailwind colors to RGB for CSS variables
+    const themeVariables = {
+        'rose': '', // Default is rose, no override needed unless we mapped everything to a generic var
+        'indigo': '--color-primary: 99 102 241; --color-primary-hover: 79 70 229;',
+        'emerald': '--color-primary: 16 185 129; --color-primary-hover: 5 150 105;',
+        'amber': '--color-primary: 245 158 11; --color-primary-hover: 217 119 6;',
+        'sky': '--color-primary: 14 165 233; --color-primary-hover: 2 132 199;',
+        'purple': '--color-primary: 168 85 247; --color-primary-hover: 147 51 234;',
+    };
+
     return (
-        <div className="min-h-screen bg-slate-900">
+        <div className={`min-h-screen bg-slate-900 theme-${themeColor}`}>
             <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
             <div className={cn(
                 'transition-all duration-300 pb-20 md:pb-0',

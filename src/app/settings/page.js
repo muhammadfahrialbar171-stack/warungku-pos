@@ -15,6 +15,8 @@ import {
     EyeOff,
     CheckCircle,
     Users,
+    Upload,
+    Palette
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -40,7 +42,20 @@ function SettingsPage() {
         email: '',
         receipt_header: '',
         receipt_footer: '',
+        logo_url: '',
+        theme_color: 'rose',
     });
+
+    const THEME_COLORS = [
+        { id: 'rose', name: 'Rose', color: 'bg-rose-500' },
+        { id: 'indigo', name: 'Indigo', color: 'bg-indigo-500' },
+        { id: 'emerald', name: 'Emerald', color: 'bg-emerald-500' },
+        { id: 'amber', name: 'Amber', color: 'bg-amber-500' },
+        { id: 'sky', name: 'Sky Blue', color: 'bg-sky-500' },
+        { id: 'purple', name: 'Purple', color: 'bg-purple-500' }
+    ];
+
+    const [uploadingLogo, setUploadingLogo] = useState(false);
 
     // Multi-user state
     const [cashiers, setCashiers] = useState([]);
@@ -59,6 +74,8 @@ function SettingsPage() {
                 email: user.email || '',
                 receipt_header: user.receipt_header || '',
                 receipt_footer: user.receipt_footer || '',
+                logo_url: user.logo_url || '',
+                theme_color: user.theme_color || 'rose',
             });
             loadCashiers();
         }
@@ -85,6 +102,8 @@ function SettingsPage() {
                     phone: profile.phone,
                     receipt_header: profile.receipt_header,
                     receipt_footer: profile.receipt_footer,
+                    logo_url: profile.logo_url,
+                    theme_color: profile.theme_color,
                 })
                 .eq('id', user.id);
 
@@ -97,6 +116,38 @@ function SettingsPage() {
             toast.error('Gagal menyimpan profil: ' + err.message);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleUploadLogo = async (e) => {
+        try {
+            if (!e.target.files || e.target.files.length === 0) return;
+            const file = e.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `logo_${user.id}_${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            setUploadingLogo(true);
+
+            // Upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage
+                .from('store_assets')
+                .upload(filePath, file, { upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('store_assets')
+                .getPublicUrl(filePath);
+
+            setProfile(prev => ({ ...prev, logo_url: publicUrl }));
+            toast.success('Logo berhasil diunggah! Jangan lupa klik Simpan Profil.');
+        } catch (error) {
+            toast.error('Gagal mengunggah logo: ' + error.message);
+        } finally {
+            setUploadingLogo(false);
+            if (e.target) e.target.value = null;
         }
     };
 
@@ -242,6 +293,59 @@ function SettingsPage() {
                                 onChange={(e) => setProfile({ ...profile, receipt_footer: e.target.value })}
                                 placeholder="Cth: Terima Kasih Atas Kunjungan Anda"
                             />
+                        </div>
+                    )}
+
+                    {isOwner && (
+                        <div className="grid grid-cols-1 gap-6 mt-4 border-t border-slate-700 pt-6">
+                            <div>
+                                <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                                    <Upload size={16} /> Logo Toko (Maks 2MB)
+                                </h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-20 h-20 rounded-xl bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center overflow-hidden">
+                                        {profile.logo_url ? (
+                                            <img src={profile.logo_url} alt="Logo Toko" className="w-full h-full object-contain" />
+                                        ) : (
+                                            <Store size={32} className="text-slate-500" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleUploadLogo}
+                                            disabled={uploadingLogo}
+                                            id="logoUpload"
+                                            className="hidden"
+                                        />
+                                        <label
+                                            htmlFor="logoUpload"
+                                            className="inline-flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-medium rounded-lg text-white cursor-pointer transition-colors"
+                                        >
+                                            {uploadingLogo ? 'Mengunggah...' : 'Pilih Gambar'}
+                                        </label>
+                                        <p className="text-xs text-slate-500 mt-2">Logo akan dicetak pada struk thermal. Gunakan gambar hitam putih dengan rasio 1:1 atau 3:2 untuk hasil terbaik.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                                    <Palette size={16} /> Warna Tema Aplikasi
+                                </h3>
+                                <div className="flex flex-wrap gap-3">
+                                    {THEME_COLORS.map(theme => (
+                                        <button
+                                            key={theme.id}
+                                            onClick={() => setProfile({ ...profile, theme_color: theme.id })}
+                                            className={`w-12 h-12 rounded-full ${theme.color} border-4 transition-all ${profile.theme_color === theme.id ? 'border-white scale-110 shadow-lg shadow-white/20' : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'}`}
+                                            title={theme.name}
+                                        />
+                                    ))}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">Pilih warna yang paling sesuai dengan identitas toko Anda.</p>
+                            </div>
                         </div>
                     )}
 

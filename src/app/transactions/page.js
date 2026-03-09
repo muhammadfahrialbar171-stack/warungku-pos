@@ -222,6 +222,7 @@ export default function TransactionsPage() {
                                         totalItems: detailModal.total_items,
                                         paymentMethod: detailModal.payment_method,
                                         createdAt: detailModal.created_at,
+                                        logoUrl: user?.logo_url,
                                     })}
                                 >
                                     Cetak Struk

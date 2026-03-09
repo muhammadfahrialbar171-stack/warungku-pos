@@ -504,6 +504,7 @@ export default function CashierPage() {
                 kasirName: user?.full_name, // FIX: send logged-in cashier name
                 receiptHeader: user?.receipt_header,
                 receiptFooter: user?.receipt_footer,
+                logoUrl: user?.logo_url,
                 customerName: customers.find(c => c.id.toString() === selectedCustomerId)?.name || '',
                 invoiceNumber,
                 items: items.map(i => ({ product_name: i.name, quantity: i.quantity, price: i.price })),
