@@ -759,14 +759,14 @@ export default function CashierPage() {
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-medium text-white truncate">{item.name}</p>
-                                            <p className="text-xs text-slate-500">{formatRupiah(item.price)}</p>
+                                            <p className="text-base font-semibold text-white truncate">{item.name}</p>
+                                            <p className="text-sm font-medium text-slate-400">{formatRupiah(item.price)}</p>
                                         </div>
                                         <button
                                             onClick={() => removeItem(item.id)}
-                                            className="p-1 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors cursor-pointer mt-0.5"
                                         >
-                                            <X size={16} />
+                                            <X size={18} />
                                         </button>
                                     </div>
                                     <div className="flex items-center justify-between mt-2">
