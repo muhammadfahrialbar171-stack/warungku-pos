@@ -20,7 +20,7 @@ export async function PUT(request, { params }) {
         const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
         if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const id = await params.id;
+        const { id } = await params;
         const body = await request.json();
 
         // Clean the body — only allow safe fields
@@ -55,7 +55,7 @@ export async function DELETE(request, { params }) {
         const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
         if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const id = await params.id;
+        const { id } = await params;
         const { error } = await supabase
             .from('expenses')
             .delete()

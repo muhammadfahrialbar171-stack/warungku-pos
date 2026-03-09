@@ -21,7 +21,7 @@ export async function GET(request, { params }) {
         const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
         if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const customerId = params.id;
+        const { id: customerId } = await params;
 
         // Fetch transactions for this customer, ordered newest first
         const { data: transactions, error } = await supabaseAdmin
