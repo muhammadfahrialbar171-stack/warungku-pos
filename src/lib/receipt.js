@@ -18,6 +18,7 @@ export function printReceipt({ storeName, kasirName, invoiceNumber, customerName
 <head>
   <meta charset="utf-8">
   <title>Struk - ${invoiceNumber}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39+Text&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page { margin: 0; size: 80mm auto; }
@@ -61,7 +62,11 @@ export function printReceipt({ storeName, kasirName, invoiceNumber, customerName
     .footer { margin-top: 12px; font-size: 11px; text-align: center; line-height: 1.3; }
     .footer-thanks { font-weight: bold; font-size: 12px; margin-bottom: 4px; }
     .footer-note { font-size: 10px; margin-top: 4px; }
-    .barcode-placeholder { margin-top: 10px; text-align: center; font-size: 10px; letter-spacing: 2px;}
+    
+    /* Barcode Stylings */
+    .barcode-container { margin-top: 10px; text-align: center; }
+    .real-barcode { font-family: 'Libre Barcode 39 Text', cursive; font-size: 34px; line-height: 1; margin-top: 5px; }
+    .barcode-text { font-size: 10px; letter-spacing: 1px; display: none; }
     
     @media print {
       body { width: 80mm; }
@@ -139,9 +144,8 @@ export function printReceipt({ storeName, kasirName, invoiceNumber, customerName
     <div class="footer-thanks">SELAMAT BELANJA KEMBALI</div>
     <div class="footer-note">Layanan Konsumen: 1500-xxx</div>
     `}
-    <div class="barcode-placeholder">
-      |||| | | ||| || || | | || | ||<br>
-      ${invoiceNumber}
+    <div class="barcode-container">
+      <div class="real-barcode">*${invoiceNumber}*</div>
     </div>
   </div>
 
@@ -152,9 +156,10 @@ export function printReceipt({ storeName, kasirName, invoiceNumber, customerName
   if (printWindow) {
     printWindow.document.write(receiptHTML);
     printWindow.document.close();
+    // Beri waktu lebih lama (1000ms) agar font dari Google Fonts termuat dengan sempurna sebelum jendela print dibuka
     setTimeout(() => {
       printWindow.print();
-    }, 300);
+    }, 1000);
   }
 }
 
