@@ -4,7 +4,7 @@
 -- 1. Create shifts table
 CREATE TABLE IF NOT EXISTS public.shifts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    store_id UUID NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
+    store_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     start_time TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE,
@@ -37,8 +37,8 @@ CREATE POLICY "Owners can view all shifts in their store"
 ON public.shifts FOR SELECT
 USING (
     store_id IN (
-        SELECT id FROM public.stores
-        WHERE owner_id = auth.uid()
+        SELECT id FROM public.users
+        WHERE id = auth.uid() OR owner_id = auth.uid()
     )
     OR
     user_id = auth.uid() -- Kasir juga bisa melihat shift-nya sendiri
@@ -58,8 +58,8 @@ USING (
     user_id = auth.uid()
     OR
     store_id IN (
-        SELECT id FROM public.stores
-        WHERE owner_id = auth.uid()
+        SELECT id FROM public.users
+        WHERE id = auth.uid() OR owner_id = auth.uid()
     )
 );
 
@@ -68,7 +68,7 @@ CREATE POLICY "Owners can delete shifts in their store"
 ON public.shifts FOR DELETE
 USING (
     store_id IN (
-        SELECT id FROM public.stores
-        WHERE owner_id = auth.uid()
+        SELECT id FROM public.users
+        WHERE id = auth.uid() OR owner_id = auth.uid()
     )
 );
