@@ -45,7 +45,12 @@ export async function GET(request) {
         }
 
         const { data, error } = await query;
-        if (error) throw error;
+        if (error) {
+            if (error.code === '42P01' || (error.message && (error.message.includes('does not exist') || error.message.includes('schema cache')))) {
+                return NextResponse.json([]); // Graceful fallback
+            }
+            throw error;
+        }
 
         return NextResponse.json(data);
     } catch (error) {
@@ -91,6 +96,9 @@ export async function POST(request) {
             .single();
 
         if (error) {
+            if (error.code === '42P01' || (error.message && (error.message.includes('does not exist') || error.message.includes('schema cache')))) {
+                return NextResponse.json({ error: 'Fitur Pengeluaran belum aktif. Anda perlu menjalankan file migrasi SQL supabase-migration-v5-expenses.sql di Supabase Anda.' }, { status: 500 });
+            }
             console.error('POST /api/expenses insert error:', error);
             throw error;
         }

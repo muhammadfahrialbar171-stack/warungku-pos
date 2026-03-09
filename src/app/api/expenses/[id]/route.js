@@ -37,7 +37,12 @@ export async function PUT(request, { params }) {
             .update(updateData)
             .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === '42P01' || (error.message && (error.message.includes('does not exist') || error.message.includes('schema cache')))) {
+                return NextResponse.json({ error: 'Fitur Pengeluaran belum aktif. Anda perlu menjalankan file migrasi SQL supabase-migration-v5-expenses.sql di Supabase Anda.' }, { status: 500 });
+            }
+            throw error;
+        }
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('PUT /api/expenses/[id] error:', error);
@@ -61,7 +66,12 @@ export async function DELETE(request, { params }) {
             .delete()
             .eq('id', id);
 
-        if (error) throw error;
+        if (error) {
+            if (error.code === '42P01' || (error.message && (error.message.includes('does not exist') || error.message.includes('schema cache')))) {
+                return NextResponse.json({ error: 'Fitur Pengeluaran belum aktif. Anda perlu menjalankan file migrasi SQL supabase-migration-v5-expenses.sql di Supabase Anda.' }, { status: 500 });
+            }
+            throw error;
+        }
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('DELETE /api/expenses/[id] error:', error);
