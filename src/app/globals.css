@@ -63,10 +63,26 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 
+/* Date input calendar icon fix for dark mode */
+::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.7;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 /* ===== Light Mode ===== */
 .light body {
   background: #f1f5f9;
   color: #1e293b;
+}
+
+.light ::-webkit-calendar-picker-indicator {
+  filter: none;
 }
 
 .light ::-webkit-scrollbar-track {
