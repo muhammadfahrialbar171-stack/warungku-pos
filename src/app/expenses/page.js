@@ -79,7 +79,11 @@ function ExpensesPage() {
     }, [loadExpenses]);
 
     const openModal = (expense = null) => {
-        if (expense) {
+        // Prevent event objects from being treated as expense data
+        const isEvent = expense && expense.nativeEvent;
+        const data = isEvent ? null : expense;
+
+        if (data) {
             setFormData({
                 title: expense.title,
                 amount: expense.amount.toString(),
@@ -96,7 +100,7 @@ function ExpensesPage() {
                 expense_date: dayjs().format('YYYY-MM-DD'),
             });
         }
-        setModal({ isOpen: true, data: expense });
+        setModal({ isOpen: true, data });
     };
 
     const handleSave = async (e) => {
@@ -126,7 +130,10 @@ function ExpensesPage() {
                 }),
             });
 
-            if (!res.ok) throw new Error('Gagal menyimpan pengeluaran');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => null);
+                throw new Error(errData?.error || 'Gagal menyimpan pengeluaran');
+            }
 
             setModal({ isOpen: false, data: null });
             loadExpenses();

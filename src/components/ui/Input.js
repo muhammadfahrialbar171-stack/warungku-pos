@@ -18,7 +18,7 @@ export default function Input({
             )}
             <div className="relative">
                 {Icon && (
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                         <Icon size={18} className="text-slate-500" />
                     </div>
                 )}
