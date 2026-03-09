@@ -616,7 +616,7 @@ export default function CashierPage() {
 
                     {/* Product Grid */}
                     {loading ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
                             {[...Array(10)].map((_, i) => (
                                 <div key={i} className="skeleton h-40 rounded-2xl" />
                             ))}
@@ -627,7 +627,7 @@ export default function CashierPage() {
                             <p className="text-sm">Coba ubah pencarian atau filter kategori</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3 xl:gap-4">
                             {filteredProducts.map((product) => {
                                 const inCart = items.find((i) => i.id === product.id);
                                 const outOfStock = product.stock <= 0;
