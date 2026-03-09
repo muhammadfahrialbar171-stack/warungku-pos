@@ -10,6 +10,8 @@ import {
     XCircle,
     Target,
     X,
+    Award,
+    ImageOff,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -102,6 +104,39 @@ export default function NotificationPanel() {
                 percentage: isAchieved ? 100 : percentage,
                 category: 'target',
             });
+
+            // 4. BIG Transaction Alert (> 200rb)
+            const bigTransactions = todayTx?.filter(t => t.total_amount >= 200000) || [];
+            if (bigTransactions.length > 0) {
+                // Find the single biggest transaction
+                const maxTx = bigTransactions.reduce((prev, current) => (prev.total_amount > current.total_amount) ? prev : current);
+                notifs.push({
+                    id: 'big-tx',
+                    type: 'success',
+                    icon: Award,
+                    title: 'Pesanan Besar! 🚀',
+                    message: `Transaksi senilai ${formatRupiah(maxTx.total_amount)} hari ini.`,
+                    category: 'achievement',
+                });
+            }
+
+            // 5. Incomplete product data (missing category or image)
+            const { count: missingImageCount } = await supabase
+                .from('products')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id)
+                .is('image_url', null);
+
+            if (missingImageCount && missingImageCount > 0) {
+                notifs.push({
+                    id: 'incomplete-products',
+                    type: 'warning',
+                    icon: ImageOff,
+                    title: 'Data Etalase Kurang',
+                    message: `Ada ${missingImageCount} produk yang belum memiliki gambar.`,
+                    category: 'alert',
+                });
+            }
 
             setNotifications(notifs);
         } catch (err) {
@@ -234,10 +269,10 @@ export default function NotificationPanel() {
                                                     <div className="mt-2 w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full transition-all duration-500 ${notif.percentage >= 100
-                                                                    ? 'bg-emerald-400'
-                                                                    : notif.percentage >= 50
-                                                                        ? 'bg-amber-400'
-                                                                        : 'bg-indigo-400'
+                                                                ? 'bg-emerald-400'
+                                                                : notif.percentage >= 50
+                                                                    ? 'bg-amber-400'
+                                                                    : 'bg-indigo-400'
                                                                 }`}
                                                             style={{ width: `${notif.percentage}%` }}
                                                         />
