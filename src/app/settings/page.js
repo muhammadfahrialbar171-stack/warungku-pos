@@ -26,7 +26,9 @@ import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 
-export default function SettingsPage() {
+import { withRBAC } from '@/components/layout/withRBAC';
+
+function SettingsPage() {
     const { user } = useAuthStore();
     const toast = useToast();
     const [saving, setSaving] = useState(false);
@@ -385,3 +387,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+export default withRBAC(SettingsPage, ['owner']);

@@ -32,7 +32,9 @@ const EXPENSE_CATEGORIES = [
     { id: 'lainnya', label: 'Lain-lain' },
 ];
 
-export default function ExpensesPage() {
+import { withRBAC } from '@/components/layout/withRBAC';
+
+function ExpensesPage() {
     const { user, session } = useAuthStore();
     const toast = useToast();
     const [expenses, setExpenses] = useState([]);
@@ -409,3 +411,5 @@ export default function ExpensesPage() {
         </div>
     );
 }
+
+export default withRBAC(ExpensesPage, ['owner']);

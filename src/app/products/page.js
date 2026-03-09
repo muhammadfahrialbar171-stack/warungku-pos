@@ -29,7 +29,9 @@ import { useToast } from '@/components/ui/Toast';
 import { useDebounce } from '@/hooks/useDebounce';
 import Papa from 'papaparse';
 
-export default function ProductsPage() {
+import { withRBAC } from '@/components/layout/withRBAC';
+
+function ProductsPage() {
     const { user } = useAuthStore();
     const toast = useToast();
     const [products, setProducts] = useState([]);
@@ -679,3 +681,5 @@ export default function ProductsPage() {
         </div>
     );
 }
+
+export default withRBAC(ProductsPage, ['owner']);

@@ -9,6 +9,7 @@ import {
     ArrowUpRight,
 } from 'lucide-react';
 import { StatCard } from '@/components/ui/Card';
+import { withRBAC } from '@/components/layout/withRBAC';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import { supabase } from '@/lib/supabase';
@@ -28,7 +29,7 @@ import { Line } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip);
 
-export default function DashboardPage() {
+function DashboardPage() {
     const { user } = useAuthStore();
     const [stats, setStats] = useState({
         todaySales: 0,
@@ -343,3 +344,5 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+export default withRBAC(DashboardPage, ['owner']);

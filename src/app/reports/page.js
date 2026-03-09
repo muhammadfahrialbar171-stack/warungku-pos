@@ -37,7 +37,9 @@ import { Bar, Line } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler);
 
-export default function ReportsPage() {
+import { withRBAC } from '@/components/layout/withRBAC';
+
+function ReportsPage() {
     const { user } = useAuthStore();
     const [period, setPeriod] = useState('daily');
     const [dateFrom, setDateFrom] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
@@ -399,3 +401,5 @@ export default function ReportsPage() {
         </div>
     );
 }
+
+export default withRBAC(ReportsPage, ['owner']);

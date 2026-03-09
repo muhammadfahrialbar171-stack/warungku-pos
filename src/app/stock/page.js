@@ -21,7 +21,9 @@ import { useAuthStore } from '@/store/authStore';
 import { formatDate, cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 
-export default function StockPage() {
+import { withRBAC } from '@/components/layout/withRBAC';
+
+function StockPage() {
     const { user } = useAuthStore();
     const toast = useToast();
     const [products, setProducts] = useState([]);
@@ -237,3 +239,5 @@ export default function StockPage() {
         </div>
     );
 }
+
+export default withRBAC(StockPage, ['owner']);
