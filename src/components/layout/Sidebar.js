@@ -27,7 +27,7 @@ const navItems = [
     { href: '/products', label: 'Produk', icon: Package, ownerOnly: true },
     { href: '/stock', label: 'Stok', icon: Boxes, ownerOnly: true },
     { href: '/transactions', label: 'Transaksi', icon: Receipt },
-    { href: '/shifts', label: 'Shift Kasir', icon: Clock },
+    { href: '/shifts', label: 'Shift Kasir', icon: Clock, cashierOnly: true },
     { href: '/customers', label: 'Pelanggan', icon: Users },
     { href: '/expenses', label: 'Pengeluaran', icon: Wallet },
     { href: '/reports', label: 'Laporan', icon: BarChart3, ownerOnly: true },
@@ -64,7 +64,14 @@ export default function Sidebar({ collapsed, onToggle }) {
             {/* Navigation */}
             <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
                 {navItems
-                    .filter(item => !item.ownerOnly || !user?.role || user?.role === 'owner')
+                    .filter(item => {
+                        // If user is owner, they see ownerOnly items but NOT cashierOnly items
+                        if (user?.role === 'owner' || !user?.role) {
+                            return !item.cashierOnly;
+                        }
+                        // If user is cashier, they don't see ownerOnly items
+                        return !item.ownerOnly;
+                    })
                     .map((item) => {
                         const isActive = pathname === item.href;
                         return (
