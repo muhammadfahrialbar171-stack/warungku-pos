@@ -28,10 +28,10 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, color = 'in
 
     return (
         <Card className={cn('relative overflow-hidden', className)}>
-            <div className="flex items-center justify-between gap-4 z-10 relative h-full">
-                <div className="flex flex-col justify-center h-full space-y-2 flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-400" title={title}>{title}</p>
-                    <p className="text-2xl font-bold text-white tracking-tight drop-shadow-md break-words" title={value}>{value}</p>
+            <div className="flex items-center justify-between gap-3 z-10 relative h-full">
+                <div className="flex flex-col justify-center h-full space-y-1.5 flex-1 min-w-0 pr-1">
+                    <p className="text-sm font-medium text-slate-400 truncate" title={title}>{title}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-white tracking-tight drop-shadow-md whitespace-nowrap overflow-hidden text-ellipsis" title={value}>{value}</p>
                     {trend !== undefined && (
                         <div className={cn('flex items-center gap-1 text-xs font-semibold inline-flex w-fit px-2 py-0.5 mt-auto rounded-full bg-slate-800/50 backdrop-blur-md border', trendUp ? 'text-emerald-400 border-emerald-500/30' : 'text-rose-400 border-rose-500/30')}>
                             <span>{trendUp ? '↑' : '↓'}</span>
