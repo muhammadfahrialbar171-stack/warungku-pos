@@ -11,10 +11,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 1. Create shifts table
+DROP TABLE IF EXISTS public.shifts CASCADE;
 CREATE TABLE IF NOT EXISTS public.shifts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     store_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     start_time TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE,
     starting_cash NUMERIC NOT NULL DEFAULT 0,
