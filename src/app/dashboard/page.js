@@ -577,13 +577,13 @@ function DashboardPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse min-w-[400px]">
                   <thead>
                     <tr className="border-b border-slate-700/50 text-xs text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3 font-medium">Invoice</th>
-                      <th className="pb-3 font-medium">Waktu</th>
-                      <th className="pb-3 font-medium text-right">Total</th>
-                      <th className="pb-3 font-medium text-center">Status</th>
+                      <th className="pb-3 px-2 font-medium">Invoice</th>
+                      <th className="pb-3 px-2 font-medium">Waktu</th>
+                      <th className="pb-3 px-2 font-medium text-right">Total</th>
+                      <th className="pb-3 px-2 font-medium text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
@@ -592,18 +592,18 @@ function DashboardPage() {
                         key={tx.id}
                         className="hover:bg-slate-800/30 transition-colors group"
                       >
-                        <td className="py-3">
+                        <td className="py-3 px-2">
                           <span className="text-sm font-semibold text-white group-hover:text-indigo-400 transition-colors">
                             {tx.invoice_number}
                           </span>
                         </td>
-                        <td className="py-3 text-xs text-slate-400">
+                        <td className="py-3 px-2 text-xs text-slate-400">
                           {formatDate(tx.created_at, "DD MMM, HH:mm")}
                         </td>
-                        <td className="py-3 text-sm font-medium text-emerald-400 text-right">
+                        <td className="py-3 px-2 text-sm font-medium text-emerald-400 text-right">
                           {formatRupiah(tx.total_amount)}
                         </td>
-                        <td className="py-3 text-center">
+                        <td className="py-3 px-2 text-center">
                           <Badge
                             variant={
                               tx.status === "completed" ? "success" : "warning"

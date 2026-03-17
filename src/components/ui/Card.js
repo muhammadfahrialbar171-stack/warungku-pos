@@ -29,14 +29,14 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, color = 'in
     return (
         <Card className={cn('relative overflow-hidden', className)}>
             <div className="flex items-center justify-between gap-2 sm:gap-3 z-10 relative h-full">
-                <div className="flex flex-col justify-center h-full space-y-2 flex-1 min-w-0 pr-1">
-                    <p className="text-xs sm:text-sm font-medium text-slate-400 truncate" title={title}>{title}</p>
-                    <p className="text-xl sm:text-[22px] font-bold text-white tracking-tight drop-shadow-md break-words" title={value}>{value}</p>
+                <div className="flex flex-col justify-center h-full space-y-1 sm:space-y-2 flex-1 min-w-0 pr-1">
+                    <p className="text-xs sm:text-sm font-medium text-slate-400 line-clamp-2 leading-tight" title={title}>{title}</p>
+                    <p className="text-xl sm:text-[22px] font-bold text-white tracking-tight drop-shadow-md break-words leading-none" title={value}>{value}</p>
 
                     {/* Render trend if provided */}
                     {trend !== undefined && trend !== null && (
                         <div className={cn(
-                            'flex items-center gap-1 text-[10px] sm:text-xs font-semibold w-fit px-2 py-0.5 rounded-full bg-slate-800/50 backdrop-blur-md border',
+                            'flex items-center gap-1 text-[10px] sm:text-xs font-semibold w-fit px-2 py-0.5 rounded-full bg-slate-800/50 backdrop-blur-md border mt-1 sm:mt-0',
                             trendUp ? 'text-emerald-400 border-emerald-500/30' : 'text-rose-400 border-rose-500/30'
                         )}>
                             <span>{trendUp ? '▲' : '▼'}</span>
@@ -45,7 +45,7 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, color = 'in
                     )}
                 </div>
                 {Icon && (
-                    <div className={cn('p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-br shadow-xl ring-1 ring-white/20 group-hover:scale-110 transition-transform duration-300 flex-shrink-0', colorMap[color])}>
+                    <div className={cn('p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-br shadow-xl ring-1 ring-white/20 group-hover:scale-110 transition-transform duration-300 flex-shrink-0 self-start sm:self-center', colorMap[color])}>
                         <Icon size={24} className="text-white drop-shadow-sm" />
                     </div>
                 )}
