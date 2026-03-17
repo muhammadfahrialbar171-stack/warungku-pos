@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 export default function Input({
     label,
     error,
+    hint,
     icon: Icon,
     className,
     ...props
@@ -12,27 +13,28 @@ export default function Input({
     return (
         <div className="space-y-1.5">
             {label && (
-                <label className="block text-sm font-medium text-slate-300">
+                <label className="block text-[13px] font-medium text-[var(--text-secondary)]">
                     {label}
                 </label>
             )}
             <div className="relative">
                 {Icon && (
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                        <Icon size={18} className="text-slate-500" />
+                        <Icon size={16} className="text-[var(--text-muted)]" />
                     </div>
                 )}
                 <input
                     className={cn(
-                        'w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-shadow transition-colors shadow-sm',
+                        'w-full bg-[var(--surface-1)] border border-[var(--surface-border)] focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all',
                         Icon && 'pl-10',
-                        error && 'border-red-500 focus:border-red-500 focus:ring-red-500',
+                        error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
                         className
                     )}
                     {...props}
                 />
             </div>
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {hint && !error && <p className="text-[11px] text-[var(--text-muted)]">{hint}</p>}
+            {error && <p className="text-[11px] text-red-400 font-medium">{error}</p>}
         </div>
     );
 }
@@ -41,21 +43,21 @@ export function Select({ label, error, children, className, ...props }) {
     return (
         <div className="space-y-1.5">
             {label && (
-                <label className="block text-sm font-medium text-slate-300">
+                <label className="block text-[13px] font-medium text-[var(--text-secondary)]">
                     {label}
                 </label>
             )}
             <select
                 className={cn(
-                    'w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-shadow transition-colors cursor-pointer shadow-sm appearance-none',
-                    error && 'border-red-500 focus:border-red-500 focus:ring-red-500',
+                    'w-full bg-[var(--surface-1)] border border-[var(--surface-border)] focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer appearance-none',
+                    error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
                     className
                 )}
                 {...props}
             >
                 {children}
             </select>
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-[11px] text-red-400 font-medium">{error}</p>}
         </div>
     );
 }
@@ -64,20 +66,20 @@ export function Textarea({ label, error, className, ...props }) {
     return (
         <div className="space-y-1.5">
             {label && (
-                <label className="block text-sm font-medium text-slate-300">
+                <label className="block text-[13px] font-medium text-[var(--text-secondary)]">
                     {label}
                 </label>
             )}
             <textarea
                 className={cn(
-                    'w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-shadow transition-colors resize-none shadow-sm',
-                    error && 'border-red-500 focus:border-red-500 focus:ring-red-500',
+                    'w-full bg-[var(--surface-1)] border border-[var(--surface-border)] focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none',
+                    error && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
                     className
                 )}
                 rows={3}
                 {...props}
             />
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-[11px] text-red-400 font-medium">{error}</p>}
         </div>
     );
 }

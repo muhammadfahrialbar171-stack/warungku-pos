@@ -36,14 +36,17 @@ export default function AppShell({ children }) {
     // Loading state
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-900">
+            <div className="min-h-screen flex items-center justify-center bg-[var(--surface-0)]">
                 <div className="text-center space-y-4 animate-fade-in">
-                    <div className="w-16 h-16 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center animate-pulse">
-                        <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <svg className="w-7 h-7 text-white animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
-                    <p className="text-slate-400 text-sm">Memuat...</p>
+                    <div className="space-y-1">
+                        <p className="text-[var(--text-primary)] text-sm font-semibold">WarungKu</p>
+                        <p className="text-[var(--text-muted)] text-xs">Memuat aplikasi...</p>
+                    </div>
                 </div>
             </div>
         );
@@ -54,30 +57,18 @@ export default function AppShell({ children }) {
         return <>{children}</>;
     }
 
-    // Authenticated layout
-
     // Theme setup
-    const themeColor = user?.theme_color || 'rose';
-
-    // Convert Tailwind colors to RGB for CSS variables
-    const themeVariables = {
-        'rose': '', // Default is rose, no override needed unless we mapped everything to a generic var
-        'indigo': '--color-primary: 99 102 241; --color-primary-hover: 79 70 229;',
-        'emerald': '--color-primary: 16 185 129; --color-primary-hover: 5 150 105;',
-        'amber': '--color-primary: 245 158 11; --color-primary-hover: 217 119 6;',
-        'sky': '--color-primary: 14 165 233; --color-primary-hover: 2 132 199;',
-        'purple': '--color-primary: 168 85 247; --color-primary-hover: 147 51 234;',
-    };
+    const themeColor = user?.theme_color || 'indigo';
 
     return (
-        <div className={`min-h-screen bg-slate-900 theme-${themeColor}`}>
+        <div className={`min-h-screen bg-[var(--surface-0)] theme-${themeColor}`}>
             <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
             <div className={cn(
-                'transition-all duration-300 pb-20 md:pb-0',
-                sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'
+                'transition-all duration-300 min-h-screen flex flex-col pb-20 md:pb-0',
+                sidebarCollapsed ? 'md:ml-[72px]' : 'md:ml-64'
             )}>
                 <Header />
-                <main className="page-container">
+                <main className="page-container flex-1">
                     {children}
                 </main>
             </div>

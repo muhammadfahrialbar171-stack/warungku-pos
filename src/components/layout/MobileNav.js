@@ -20,7 +20,7 @@ const mobileNavItems = [
     { href: '/products', label: 'Produk', icon: Package, ownerOnly: true },
     { href: '/cashier', label: 'Kasir', icon: ShoppingCart, primary: true },
     { href: '/transactions', label: 'Transaksi', icon: Receipt },
-    { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/settings', label: 'Lainnya', icon: Settings },
 ];
 
 export default function MobileNav() {
@@ -37,77 +37,83 @@ export default function MobileNav() {
             setIsInstallable(true);
         };
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
         return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     }, []);
 
     const handleInstallClick = async () => {
         if (!deferredPrompt) return;
-
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-
         if (outcome === 'accepted') {
             setIsInstallable(false);
             setDeferredPrompt(null);
         }
     };
 
+    const filteredItems = mobileNavItems.filter(item => !item.ownerOnly || isOwner);
+
     return (
         <>
-            {/* Floating Install App Button for Mobile */}
+            {/* Floating Install Button */}
             {isInstallable && (
-                <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 md:hidden pb-safe">
+                <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-40 md:hidden">
                     <button
                         onClick={handleInstallClick}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 text-sm font-medium animate-bounce"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/30 text-xs font-semibold animate-bounce"
                     >
-                        <Download size={16} />
+                        <Download size={14} />
                         Install Aplikasi
                     </button>
                 </div>
             )}
 
-            <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-slate-900 border-t border-slate-800 pb-safe">
-                <div className="flex items-center justify-around px-2 py-1">
-                    {mobileNavItems
-                        .filter(item => !item.ownerOnly || isOwner)
-                        .map((item) => {
-                            const isActive = pathname === item.href;
+            {/* Mobile Bottom Nav */}
+            <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-[var(--surface-1)]/95 backdrop-blur-xl border-t border-[var(--surface-border)]"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            >
+                <div className="flex items-center justify-around px-1 h-16">
+                    {filteredItems.map((item) => {
+                        const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
 
-                            if (item.primary) {
-                                return (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        className="relative -top-4"
-                                    >
-                                        <div className={cn(
-                                            'w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all',
-                                            isActive
-                                                ? 'bg-indigo-500 shadow-indigo-500/40 scale-110'
-                                                : 'bg-slate-800 shadow-sm border border-slate-700'
-                                        )}>
-                                            <item.icon size={24} className={isActive ? "text-white" : "text-slate-400"} />
-                                        </div>
-                                    </Link>
-                                );
-                            }
-
+                        if (item.primary) {
                             return (
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={cn(
-                                        'flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors',
-                                        isActive ? 'text-indigo-400' : 'text-slate-500'
-                                    )}
+                                    className="relative -top-3"
                                 >
-                                    <item.icon size={20} />
-                                    <span className="text-[10px] font-medium">{item.label}</span>
+                                    <div className={cn(
+                                        'w-13 h-13 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-200',
+                                        isActive
+                                            ? 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/30 scale-105'
+                                            : 'bg-[var(--surface-2)] border border-[var(--surface-border)] shadow-sm'
+                                    )}>
+                                        <item.icon size={22} className={isActive ? "text-white" : "text-[var(--text-secondary)]"} />
+                                    </div>
+                                    {isActive && (
+                                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-400" />
+                                    )}
                                 </Link>
                             );
-                        })}
+                        }
+
+                        return (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    'flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-colors min-w-[52px]',
+                                    isActive ? 'text-indigo-400' : 'text-[var(--text-muted)]'
+                                )}
+                            >
+                                <item.icon size={20} />
+                                <span className="text-[10px] font-medium">{item.label}</span>
+                                {isActive && (
+                                    <div className="w-4 h-0.5 rounded-full bg-indigo-400 mt-0.5" />
+                                )}
+                            </Link>
+                        );
+                    })}
                 </div>
             </nav>
         </>

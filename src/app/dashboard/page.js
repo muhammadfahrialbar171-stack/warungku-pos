@@ -8,6 +8,8 @@ import {
   TrendingUp,
   ArrowUpRight,
   PieChart,
+  CalendarDays,
+  Activity,
 } from "lucide-react";
 import { StatCard } from "@/components/ui/Card";
 import { withRBAC } from "@/components/layout/withRBAC";
@@ -24,20 +26,24 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Filler,
   Tooltip,
   ArcElement,
   PieController,
   DoughnutController,
   Legend,
+  BarController,
 } from "chart.js";
-import { Line, Doughnut, Pie } from "react-chartjs-2";
+import { Line, Doughnut, Bar } from "react-chartjs-2";
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
+  BarController,
   Filler,
   Tooltip,
   ArcElement,
@@ -57,11 +63,8 @@ function DashboardPage() {
   const [topProducts, setTopProducts] = useState([]);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
-
-  // New States for Analytics
   const [categoryData, setCategoryData] = useState({ labels: [], data: [] });
   const [paymentData, setPaymentData] = useState({ labels: [], data: [] });
-
   const [loading, setLoading] = useState(true);
 
   const loadDashboard = useCallback(async () => {
@@ -84,7 +87,7 @@ function DashboardPage() {
       const todaySales =
         todayTx?.reduce((sum, t) => sum + t.total_amount, 0) || 0;
 
-      // Monthly sales (for stats and pie chart)
+      // Monthly sales
       const { data: monthTx } = await supabase
         .from("transactions")
         .select("id, total_amount, payment_method")
@@ -95,7 +98,7 @@ function DashboardPage() {
       const monthSales =
         monthTx?.reduce((sum, t) => sum + t.total_amount, 0) || 0;
 
-      // Calculate Payment Methods Data
+      // Payment Methods Data
       const paymentMethodMap = {};
       (monthTx || []).forEach((tx) => {
         const method =
@@ -109,39 +112,30 @@ function DashboardPage() {
         paymentMethodMap[method] =
           (paymentMethodMap[method] || 0) + tx.total_amount;
       });
-
       setPaymentData({
         labels: Object.keys(paymentMethodMap),
         data: Object.values(paymentMethodMap),
       });
 
-      // Fetch Transaction Items & Products for Category Analysis
+      // Category Analysis
       if (monthTx && monthTx.length > 0) {
         const txIds = monthTx.map((t) => t.id);
-
-        // Get all products to map category
         const { data: allProducts } = await supabase
           .from("products")
           .select("id, category_id");
-
-        // Get all categories to map name
         const { data: allCategories } = await supabase
           .from("categories")
           .select("id, name");
 
-        // Create product to category mapping
         const productToCategoryMap = {};
         const categoryNameMap = {};
-
         (allCategories || []).forEach((c) => (categoryNameMap[c.id] = c.name));
-
         (allProducts || []).forEach((p) => {
           productToCategoryMap[p.id] = p.category_id
             ? categoryNameMap[p.category_id]
-            : "Uncategorized";
+            : "Lainnya";
         });
 
-        // Fetch Items
         const { data: items } = await supabase
           .from("transaction_items")
           .select("product_id, quantity, price")
@@ -150,17 +144,14 @@ function DashboardPage() {
         const categorySalesMap = {};
         (items || []).forEach((item) => {
           const catName =
-            productToCategoryMap[item.product_id] || "Uncategorized";
-          const curSales = item.quantity * item.price;
+            productToCategoryMap[item.product_id] || "Lainnya";
           categorySalesMap[catName] =
-            (categorySalesMap[catName] || 0) + curSales;
+            (categorySalesMap[catName] || 0) + item.quantity * item.price;
         });
 
-        // Sort by sales (desc)
         const sortedCategories = Object.entries(categorySalesMap).sort(
           (a, b) => b[1] - a[1],
         );
-
         setCategoryData({
           labels: sortedCategories.map((c) => c[0]),
           data: sortedCategories.map((c) => c[1]),
@@ -169,7 +160,7 @@ function DashboardPage() {
         setCategoryData({ labels: [], data: [] });
       }
 
-      // 7-day sales data for chart
+      // 7-day sales data
       const { data: weekTx } = await supabase
         .from("transactions")
         .select("total_amount, created_at")
@@ -177,7 +168,6 @@ function DashboardPage() {
         .gte("created_at", weekStart)
         .eq("status", "completed");
 
-      // Group by day
       const dailyMap = {};
       for (let i = 6; i >= 0; i--) {
         const day = dayjs().subtract(i, "day").format("YYYY-MM-DD");
@@ -185,9 +175,7 @@ function DashboardPage() {
       }
       (weekTx || []).forEach((tx) => {
         const day = dayjs(tx.created_at).format("YYYY-MM-DD");
-        if (dailyMap[day] !== undefined) {
-          dailyMap[day] += tx.total_amount;
-        }
+        if (dailyMap[day] !== undefined) dailyMap[day] += tx.total_amount;
       });
       setWeeklyData(
         Object.entries(dailyMap).map(([date, amount]) => ({
@@ -219,7 +207,6 @@ function DashboardPage() {
         .eq("is_active", true)
         .order("updated_at", { ascending: false })
         .limit(5);
-
       setTopProducts(products || []);
 
       // Recent transactions
@@ -228,8 +215,7 @@ function DashboardPage() {
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(5);
-
+        .limit(6);
       setRecentTransactions(recent || []);
     } catch (err) {
       console.error("Dashboard error:", err);
@@ -242,7 +228,15 @@ function DashboardPage() {
     loadDashboard();
   }, [loadDashboard]);
 
-  // General Line Chart config
+  // Yesterday comparison
+  const yesterdaySales =
+    weeklyData.length >= 2 ? weeklyData[weeklyData.length - 2].amount : 0;
+  const todayTrend =
+    yesterdaySales > 0
+      ? Math.round(((stats.todaySales - yesterdaySales) / yesterdaySales) * 100)
+      : 0;
+
+  // ===== Chart Configs =====
   const chartData = {
     labels: weeklyData.map((d) => d.label),
     datasets: [
@@ -251,19 +245,19 @@ function DashboardPage() {
         borderColor: "rgba(99, 102, 241, 1)",
         backgroundColor: (context) => {
           const ctx = context.chart.ctx;
-          const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-          gradient.addColorStop(0, "rgba(99, 102, 241, 0.4)");
+          const gradient = ctx.createLinearGradient(0, 0, 0, 250);
+          gradient.addColorStop(0, "rgba(99, 102, 241, 0.3)");
           gradient.addColorStop(1, "rgba(99, 102, 241, 0)");
           return gradient;
         },
-        borderWidth: 3,
+        borderWidth: 2.5,
         fill: true,
-        tension: 0.5,
-        pointRadius: 4,
-        pointBackgroundColor: "rgba(99, 102, 241, 1)",
-        pointBorderColor: "#fff",
-        pointBorderWidth: 2,
+        tension: 0.4,
+        pointRadius: 0,
         pointHoverRadius: 6,
+        pointHoverBackgroundColor: "rgba(99, 102, 241, 1)",
+        pointHoverBorderColor: "#fff",
+        pointHoverBorderWidth: 2,
       },
     ],
   };
@@ -271,20 +265,19 @@ function DashboardPage() {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    interaction: {
-      mode: "index",
-      intersect: false,
-    },
+    interaction: { mode: "index", intersect: false },
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: "#1e293b",
-        borderColor: "#475569",
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        borderColor: "rgba(71, 85, 105, 0.5)",
         borderWidth: 1,
         titleColor: "#f1f5f9",
         bodyColor: "#94a3b8",
-        cornerRadius: 12,
+        cornerRadius: 10,
         padding: 12,
+        titleFont: { size: 12, weight: "600" },
+        bodyFont: { size: 11 },
         callbacks: {
           title: (items) => weeklyData[items[0]?.dataIndex]?.fullDate || "",
           label: (item) => `Penjualan: ${formatRupiah(item.raw)}`,
@@ -294,15 +287,17 @@ function DashboardPage() {
     scales: {
       x: {
         grid: { display: false },
-        ticks: { color: "#64748b", font: { size: 11 } },
+        border: { display: false },
+        ticks: { color: "#64748b", font: { size: 11, weight: "500" } },
       },
       y: {
-        grid: { color: "rgba(255, 255, 255, 0.05)", borderDash: [5, 5] },
-        border: { dash: [5, 5] },
+        grid: { color: "rgba(148, 163, 184, 0.08)", drawBorder: false },
+        border: { display: false },
         beginAtZero: true,
         ticks: {
           color: "#64748b",
           font: { size: 10 },
+          padding: 8,
           callback: (v) => {
             if (v >= 1000000) return `${(v / 1000000).toFixed(1)}M`;
             if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
@@ -313,63 +308,70 @@ function DashboardPage() {
     },
   };
 
-  // Category Doughnut Chart Config
   const categoryChartData = {
     labels: categoryData.labels,
     datasets: [
       {
         data: categoryData.data,
         backgroundColor: [
-          "rgba(99, 102, 241, 0.8)", // Indigo
-          "rgba(16, 185, 129, 0.8)", // Emerald
-          "rgba(245, 158, 11, 0.8)", // Amber
-          "rgba(236, 72, 153, 0.8)", // Pink
-          "rgba(139, 92, 246, 0.8)", // Violet
-          "rgba(6, 182, 212, 0.8)", // Cyan
-          "rgba(244, 63, 94, 0.8)", // Rose
+          "rgba(99, 102, 241, 0.85)",
+          "rgba(16, 185, 129, 0.85)",
+          "rgba(245, 158, 11, 0.85)",
+          "rgba(236, 72, 153, 0.85)",
+          "rgba(139, 92, 246, 0.85)",
+          "rgba(6, 182, 212, 0.85)",
+          "rgba(244, 63, 94, 0.85)",
         ],
-        borderColor: "rgba(30, 41, 59, 1)", // match bg-slate-800
-        borderWidth: 2,
-        hoverOffset: 4,
+        borderColor: "transparent",
+        borderWidth: 0,
+        hoverOffset: 6,
+        borderRadius: 3,
+        spacing: 2,
       },
     ],
   };
 
-  // Payment Method Pie Chart Config
   const paymentChartData = {
     labels: paymentData.labels,
     datasets: [
       {
         data: paymentData.data,
         backgroundColor: [
-          "rgba(16, 185, 129, 0.8)", // Cash - Emerald
-          "rgba(59, 130, 246, 0.8)", // Transfer - Blue
-          "rgba(139, 92, 246, 0.8)", // QRIS - Violet
+          "rgba(16, 185, 129, 0.85)",
+          "rgba(59, 130, 246, 0.85)",
+          "rgba(139, 92, 246, 0.85)",
+          "rgba(245, 158, 11, 0.85)",
         ],
-        borderColor: "rgba(30, 41, 59, 1)",
-        borderWidth: 2,
-        hoverOffset: 4,
+        borderColor: "transparent",
+        borderWidth: 0,
+        hoverOffset: 6,
       },
     ],
   };
 
-  const pieOptions = {
+  const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    cutout: "70%",
     plugins: {
       legend: {
         position: "right",
         labels: {
           color: "#94a3b8",
-          font: { size: 11 },
+          font: { size: 11, weight: "500" },
           usePointStyle: true,
+          pointStyle: "rectRounded",
           boxWidth: 8,
+          boxHeight: 8,
+          padding: 12,
         },
       },
       tooltip: {
-        backgroundColor: "#1e293b",
-        borderColor: "#475569",
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        borderColor: "rgba(71, 85, 105, 0.5)",
         borderWidth: 1,
+        cornerRadius: 10,
+        padding: 10,
         callbacks: {
           label: (item) => ` ${item.label}: ${formatRupiah(item.raw)}`,
         },
@@ -377,34 +379,71 @@ function DashboardPage() {
     },
   };
 
-  // Yesterday comparison
-  const yesterdaySales =
-    weeklyData.length >= 2 ? weeklyData[weeklyData.length - 2].amount : 0;
-  const todayTrend =
-    yesterdaySales > 0
-      ? Math.round(((stats.todaySales - yesterdaySales) / yesterdaySales) * 100)
-      : 0;
-
-  // Get time-based greeting
-  const getGreeting = () => {
-    const hour = dayjs().hour();
-    if (hour < 11) return "Selamat Pagi 🌅";
-    if (hour < 15) return "Selamat Siang ☀️";
-    if (hour < 18) return "Selamat Sore 🌤️";
-    return "Selamat Malam 🌙";
+  const barOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "right",
+        labels: {
+          color: "#94a3b8",
+          font: { size: 11, weight: "500" },
+          usePointStyle: true,
+          pointStyle: "rectRounded",
+          boxWidth: 8,
+          boxHeight: 8,
+          padding: 12,
+        },
+      },
+      tooltip: {
+        backgroundColor: "rgba(15, 23, 42, 0.95)",
+        borderColor: "rgba(71, 85, 105, 0.5)",
+        borderWidth: 1,
+        cornerRadius: 10,
+        padding: 10,
+        callbacks: {
+          label: (item) => ` ${item.label}: ${formatRupiah(item.raw)}`,
+        },
+      },
+    },
+    scales: {
+      x: { display: false },
+      y: { display: false },
+    },
   };
 
+  // ===== Greeting =====
+  const getGreeting = () => {
+    const hour = dayjs().hour();
+    if (hour < 11) return "Selamat Pagi";
+    if (hour < 15) return "Selamat Siang";
+    if (hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  };
+
+  const todayFormatted = dayjs().format("dddd, DD MMMM YYYY");
+
+  // ===== Loading Skeleton =====
   if (loading) {
     return (
       <div className="space-y-6 animate-fade-in">
+        {/* Header skeleton */}
+        <div className="space-y-2">
+          <div className="skeleton h-7 w-48 rounded-lg" />
+          <div className="skeleton h-4 w-64 rounded-lg" />
+        </div>
+        {/* Stat cards skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="skeleton h-32 rounded-xl" />
+            <div key={i} className="skeleton h-[120px] rounded-xl" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="skeleton h-80 rounded-xl" />
-          <div className="skeleton h-80 rounded-xl" />
+        {/* Chart skeleton */}
+        <div className="skeleton h-[320px] rounded-xl" />
+        {/* Bottom section skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="skeleton h-[280px] rounded-xl" />
+          <div className="skeleton h-[280px] rounded-xl" />
         </div>
       </div>
     );
@@ -412,18 +451,25 @@ function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          {getGreeting()}
-        </h1>
-        <p className="text-slate-400 text-sm mt-1">
-          Ringkasan bisnis Anda hari ini
-        </p>
+      {/* ===== Page Header ===== */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight">
+            {getGreeting()}, {user?.store_name?.split(' ')[0] || 'User'} 👋
+          </h1>
+          <div className="flex items-center gap-2 mt-1">
+            <CalendarDays size={13} className="text-[var(--text-muted)]" />
+            <p className="text-[13px] text-[var(--text-secondary)]">{todayFormatted}</p>
+          </div>
+        </div>
+        <Badge variant="primary" dot>
+          <Activity size={12} className="mr-0.5" />
+          Live
+        </Badge>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ===== Stat Cards ===== */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger-children">
         <StatCard
           title="Penjualan Hari Ini"
           value={formatRupiahShort(stats.todaySales)}
@@ -452,98 +498,99 @@ function DashboardPage() {
         />
       </div>
 
-      {/* 7-day Chart */}
+      {/* ===== Sales Chart ===== */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
-            <h3 className="text-lg font-semibold text-white">Tren Penjualan</h3>
-            <p className="text-xs text-slate-500">7 hari terakhir</p>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Tren Penjualan</h3>
+            <p className="text-[11px] text-[var(--text-muted)] mt-0.5">7 hari terakhir</p>
           </div>
-          <Badge variant="primary">
-            {formatRupiah(weeklyData.reduce((s, d) => s + d.amount, 0))}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <div className="text-right">
+              <p className="text-lg font-bold text-[var(--text-primary)]">
+                {formatRupiahShort(weeklyData.reduce((s, d) => s + d.amount, 0))}
+              </p>
+              <p className="text-[10px] text-[var(--text-muted)]">Total 7 hari</p>
+            </div>
+          </div>
         </div>
-        <div className="h-52">
+        <div className="h-56 sm:h-64">
           <Line data={chartData} options={chartOptions} />
         </div>
       </Card>
 
-      {/* Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sales By Category */}
+      {/* ===== Analytics Charts ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Category */}
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-white">
-                Penjualan per Kategori
-              </h3>
-              <p className="text-xs text-slate-500">Bulan Ini</p>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Penjualan per Kategori</h3>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Bulan ini</p>
             </div>
             <div className="p-2 bg-indigo-500/10 rounded-lg">
-              <PieChart className="text-indigo-400" size={18} />
+              <PieChart className="text-indigo-400" size={16} />
             </div>
           </div>
-          <div className="h-48 flex justify-center items-center w-full">
+          <div className="h-48 flex justify-center items-center">
             {categoryData.labels.length > 0 ? (
-              <Doughnut data={categoryChartData} options={pieOptions} />
+              <Doughnut data={categoryChartData} options={doughnutOptions} />
             ) : (
-              <EmptyState className="p-4 border-none bg-transparent w-full" icon={PieChart} title="Belum Ada Data" description="Belum ada penjualan" />
+              <EmptyState compact icon={PieChart} title="Belum Ada Data" description="Belum ada penjualan bulan ini" />
             )}
           </div>
         </Card>
 
-        {/* Sales by Payment Method */}
+        {/* Payment Method */}
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-white">
-                Metode Pembayaran
-              </h3>
-              <p className="text-xs text-slate-500">Bulan Ini</p>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Metode Pembayaran</h3>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Bulan ini</p>
             </div>
             <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <DollarSign className="text-emerald-400" size={18} />
+              <DollarSign className="text-emerald-400" size={16} />
             </div>
           </div>
-          <div className="h-48 flex justify-center items-center w-full">
+          <div className="h-48 flex justify-center items-center">
             {paymentData.labels.length > 0 ? (
-              <Pie data={paymentChartData} options={pieOptions} />
+              <Bar data={paymentChartData} options={barOptions} />
             ) : (
-              <EmptyState className="p-4 border-none bg-transparent w-full" icon={DollarSign} title="Belum Ada Data" description="Belum ada transaksi" />
+              <EmptyState compact icon={DollarSign} title="Belum Ada Data" description="Belum ada transaksi bulan ini" />
             )}
           </div>
         </Card>
       </div>
 
-      {/* Bottom Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ===== Bottom Sections ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top Products */}
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Produk Populer</h3>
-            <Badge variant="primary">Bulan ini</Badge>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Produk Populer</h3>
+            <Badge variant="primary">Top 5</Badge>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {topProducts.length === 0 ? (
-              <EmptyState icon={Package} title="Kosong" description="Belum ada data produk" />
+              <EmptyState compact icon={Package} title="Kosong" description="Belum ada data produk" />
             ) : (
               topProducts.map((product, index) => (
                 <div
                   key={product.id}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800/50 transition-colors"
+                  className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-[var(--surface-2)]/50 transition-colors group"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-sm font-bold text-indigo-400">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/15 flex items-center justify-center text-xs font-bold text-indigo-400 flex-shrink-0">
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
+                    <p className="text-[13px] font-medium text-[var(--text-primary)] truncate group-hover:text-indigo-400 transition-colors">
                       {product.name}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-[11px] text-[var(--text-muted)]">
                       Stok: {product.stock}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-[13px] font-semibold text-[var(--text-primary)] tabular-nums">
                     {formatRupiah(product.price)}
                   </p>
                 </div>
@@ -555,62 +602,44 @@ function DashboardPage() {
         {/* Recent Transactions */}
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">
-              Transaksi Terakhir
-            </h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Transaksi Terakhir</h3>
             <a
               href="/transactions"
-              className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors"
+              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors font-medium"
             >
-              Lihat semua <ArrowUpRight size={14} />
+              Lihat semua <ArrowUpRight size={12} />
             </a>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-1">
             {recentTransactions.length === 0 ? (
-              <EmptyState icon={ShoppingBag} title="Kosong" description="Belum ada transaksi" />
+              <EmptyState compact icon={ShoppingBag} title="Kosong" description="Belum ada transaksi" />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[400px]">
-                  <thead>
-                    <tr className="border-b border-slate-700/50 text-xs text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3 px-2 font-medium">Invoice</th>
-                      <th className="pb-3 px-2 font-medium">Waktu</th>
-                      <th className="pb-3 px-2 font-medium text-right">Total</th>
-                      <th className="pb-3 px-2 font-medium text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {recentTransactions.map((tx) => (
-                      <tr
-                        key={tx.id}
-                        className="hover:bg-slate-800/50 transition-colors group"
-                      >
-                        <td className="py-3 px-2">
-                          <span className="text-sm font-semibold text-white group-hover:text-indigo-400 transition-colors">
-                            {tx.invoice_number}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-xs text-slate-400">
-                          {formatDate(tx.created_at, "DD MMM, HH:mm")}
-                        </td>
-                        <td className="py-3 px-2 text-sm font-medium text-emerald-400 text-right">
-                          {formatRupiah(tx.total_amount)}
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <Badge
-                            variant={
-                              tx.status === "completed" ? "success" : "warning"
-                            }
-                            className="text-[10px] px-2 py-0.5"
-                          >
-                            {tx.status === "completed" ? "Lunas" : "Pending"}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              recentTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-lg hover:bg-[var(--surface-2)]/50 transition-colors group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-[var(--text-primary)] truncate group-hover:text-indigo-400 transition-colors">
+                      {tx.invoice_number}
+                    </p>
+                    <p className="text-[11px] text-[var(--text-muted)]">
+                      {formatDate(tx.created_at, "DD MMM, HH:mm")}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-[13px] font-semibold text-emerald-400 tabular-nums">
+                      {formatRupiah(tx.total_amount)}
+                    </p>
+                    <Badge
+                      variant={tx.status === "completed" ? "success" : "warning"}
+                      className="text-[9px] px-1.5 py-0"
+                    >
+                      {tx.status === "completed" ? "Lunas" : "Pending"}
+                    </Badge>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </Card>

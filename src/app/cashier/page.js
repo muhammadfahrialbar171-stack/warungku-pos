@@ -32,7 +32,7 @@ import { Select } from "@/components/ui/Input";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { useCartStore } from "@/store/cartStore";
-import { formatRupiah, generateInvoice, cn } from "@/lib/utils";
+import { formatRupiah, formatRupiahShort, generateInvoice, cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import {
   saveProductsOffline,
