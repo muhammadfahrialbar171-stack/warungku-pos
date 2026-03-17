@@ -229,7 +229,7 @@ function ExpensesPage() {
             {/* Actions & List */}
             <Card className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <Table>
+                    <Table className="min-w-[600px]">
                         <thead>
                             <tr className="bg-slate-900 border-b border-slate-800 text-left">
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Tanggal</th>

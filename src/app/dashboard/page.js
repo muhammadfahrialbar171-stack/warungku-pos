@@ -483,13 +483,11 @@ function DashboardPage() {
               <PieChart className="text-indigo-400" size={18} />
             </div>
           </div>
-          <div className="h-48 flex justify-center items-center">
+          <div className="h-48 flex justify-center items-center w-full">
             {categoryData.labels.length > 0 ? (
               <Doughnut data={categoryChartData} options={pieOptions} />
             ) : (
-              <div className="scale-75 origin-top w-full">
-                 <EmptyState icon={PieChart} title="Belum Ada Data" description="Belum ada penjualan bulan ini" />
-              </div>
+              <EmptyState className="p-4 border-none bg-transparent w-full" icon={PieChart} title="Belum Ada Data" description="Belum ada penjualan" />
             )}
           </div>
         </Card>
@@ -507,13 +505,11 @@ function DashboardPage() {
               <DollarSign className="text-emerald-400" size={18} />
             </div>
           </div>
-          <div className="h-48 flex justify-center items-center">
+          <div className="h-48 flex justify-center items-center w-full">
             {paymentData.labels.length > 0 ? (
               <Pie data={paymentChartData} options={pieOptions} />
             ) : (
-              <div className="scale-75 origin-top w-full">
-                 <EmptyState icon={DollarSign} title="Belum Ada Data" description="Belum ada transaksi bulan ini" />
-              </div>
+              <EmptyState className="p-4 border-none bg-transparent w-full" icon={DollarSign} title="Belum Ada Data" description="Belum ada transaksi" />
             )}
           </div>
         </Card>

@@ -386,7 +386,7 @@ function ProductsPage() {
             ) : (
                 <Card className="!p-0 overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
+                        <table className="w-full border-collapse min-w-[800px]">
                             <thead>
                                 <tr className="border-b border-slate-800 bg-slate-900">
                                     <th className="text-left text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Produk</th>

@@ -68,7 +68,7 @@ export default function MobileNav() {
                 </div>
             )}
 
-            <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden glass border-t border-slate-800 pb-safe">
+            <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-slate-900 border-t border-slate-800 pb-safe">
                 <div className="flex items-center justify-around px-2 py-1">
                     {mobileNavItems
                         .filter(item => !item.ownerOnly || isOwner)
@@ -85,10 +85,10 @@ export default function MobileNav() {
                                         <div className={cn(
                                             'w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all',
                                             isActive
-                                                ? 'bg-gradient-to-br from-indigo-500 to-purple-500 shadow-indigo-500/40 scale-110'
-                                                : 'bg-gradient-to-br from-indigo-500 to-purple-500 shadow-indigo-500/25'
+                                                ? 'bg-indigo-500 shadow-indigo-500/40 scale-110'
+                                                : 'bg-slate-800 shadow-sm border border-slate-700'
                                         )}>
-                                            <item.icon size={24} className="text-white" />
+                                            <item.icon size={24} className={isActive ? "text-white" : "text-slate-400"} />
                                         </div>
                                     </Link>
                                 );

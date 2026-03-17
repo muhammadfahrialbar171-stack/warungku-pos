@@ -123,7 +123,7 @@ export default function ShiftsPage() {
             ) : (
                 <div className="bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden shadow-xl shadow-black/20">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead>
                                 <tr className="border-b border-slate-800 bg-slate-900/80 text-xs uppercase tracking-wider text-slate-400 font-semibold">
                                     <th className="p-4 pl-6">Kasir & Waktu</th>

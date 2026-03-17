@@ -182,7 +182,7 @@ export default function CustomersPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
+                    <table className="w-full border-collapse min-w-[600px]">
                         <thead>
                             <tr className="bg-slate-900 border-b border-slate-800 text-left">
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Info Pelanggan</th>
@@ -210,7 +210,7 @@ export default function CustomersPage() {
                                             icon={Users}
                                             title="Belum Ada Pelanggan"
                                             description="Data pelanggan yang ditambahkan akan muncul di sini."
-                                            action={isOwner ? <Button onClick={() => openModal()} variant="secondary" className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm">Tambah Pelanggan</Button> : null}
+                                            action={isOwner ? <Button onClick={() => openModal()} variant="secondary" className="bg-slate-800 border-slate-700 hover:bg-slate-700 shadow-sm">Tambah Pelanggan</Button> : null}
                                         />
                                     </td>
                                 </tr>
