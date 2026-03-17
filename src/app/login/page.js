@@ -79,6 +79,7 @@ export default function LoginPage() {
                                     value={fullName}
                                     onChange={(e) => setFullName(e.target.value)}
                                     placeholder="Nama lengkap Anda"
+                                    className="!bg-[var(--surface-0)]"
                                     required
                                 />
                                 <Input
@@ -88,6 +89,7 @@ export default function LoginPage() {
                                     onChange={(e) => setStoreName(e.target.value)}
                                     placeholder="Nama toko Anda"
                                     icon={Store}
+                                    className="!bg-[var(--surface-0)]"
                                     required
                                 />
                             </>
@@ -100,6 +102,7 @@ export default function LoginPage() {
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="email@example.com"
                             icon={Mail}
+                            className="!bg-[var(--surface-0)]"
                             required
                         />
 
@@ -110,6 +113,7 @@ export default function LoginPage() {
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"
                             icon={Lock}
+                            className="!bg-[var(--surface-0)]"
                             required
                         />
 

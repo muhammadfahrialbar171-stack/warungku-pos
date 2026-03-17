@@ -60,10 +60,22 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, trendUp, c
             {/* Subtle gradient accent */}
             <div className={cn('absolute inset-0 bg-gradient-to-br opacity-50 pointer-events-none', colors.accent)} />
             
-            <div className="relative z-10 flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0 space-y-1.5">
-                    <p className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">{title}</p>
-                    <p className="text-2xl font-bold text-[var(--text-primary)] tracking-tight leading-none" title={value}>
+            <div className="relative z-10">
+                {/* Icon - absolute positioned top-right to avoid competing for space */}
+                {Icon && (
+                    <div className={cn(
+                        'absolute top-0 right-0 p-2 rounded-xl border transition-transform duration-200 group-hover:scale-105',
+                        colors.iconBg,
+                        colors.iconText,
+                        colors.iconBorder
+                    )}>
+                        <Icon size={18} />
+                    </div>
+                )}
+
+                <div className="space-y-1.5 pr-12">
+                    <p className="text-[11px] font-medium text-[var(--text-secondary)] uppercase tracking-wider leading-tight">{title}</p>
+                    <p className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight leading-none break-all" title={value}>
                         {value}
                     </p>
 
@@ -89,17 +101,6 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, trendUp, c
                         <p className="text-[11px] text-[var(--text-muted)]">{subtitle}</p>
                     )}
                 </div>
-
-                {Icon && (
-                    <div className={cn(
-                        'p-2.5 rounded-xl border flex-shrink-0 transition-transform duration-200 group-hover:scale-105',
-                        colors.iconBg,
-                        colors.iconText,
-                        colors.iconBorder
-                    )}>
-                        <Icon size={20} />
-                    </div>
-                )}
             </div>
         </Card>
     );
