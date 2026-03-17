@@ -340,7 +340,7 @@ function ProductsPage() {
                         <Button variant="secondary" size="sm" onClick={() => setCategoryModalOpen(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm flex-1 sm:flex-none justify-center">
                             <Plus size={16} /> Kategori
                         </Button>
-                        <Button size="sm" onClick={openAddModal} className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25 flex-1 sm:flex-none justify-center">
+                        <Button size="sm" onClick={openAddModal} className="flex-1 sm:flex-none justify-center">
                             <Plus size={16} /> Tambah Produk
                         </Button>
                     </div>
@@ -356,13 +356,13 @@ function ProductsPage() {
                         placeholder="Cari nama atau SKU produk..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:bg-slate-800/80 transition-all duration-300 shadow-inner"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-sm"
                     />
                 </div>
                 <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:bg-slate-800/80 cursor-pointer transition-all duration-300 shadow-inner appearance-none"
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer transition-all shadow-sm appearance-none"
                 >
                     <option value="all">Semua Kategori</option>
                     {categories.map((cat) => (
@@ -384,11 +384,11 @@ function ProductsPage() {
                     action={<Button size="sm" onClick={openAddModal}><Plus size={16} /> Tambah Produk</Button>}
                 />
             ) : (
-                <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5">
+                <Card className="!p-0 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
                             <thead>
-                                <tr className="border-b border-white/5 bg-slate-800/40">
+                                <tr className="border-b border-slate-800 bg-slate-900">
                                     <th className="text-left text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Produk</th>
                                     <th className="text-left text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4 hidden sm:table-cell">Kategori</th>
                                     <th className="text-right text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Harga</th>
@@ -402,11 +402,11 @@ function ProductsPage() {
                                     const hasDiscount = product.discount > 0;
 
                                     return (
-                                        <tr key={product.id} className="hover:bg-slate-800/40 transition-colors duration-200 group">
+                                        <tr key={product.id} className="hover:bg-slate-800/50 transition-colors group">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     {/* Product Image */}
-                                                    <div className="w-12 h-12 rounded-xl bg-slate-700/50 flex-shrink-0 overflow-hidden border border-white/5">
+                                                    <div className="w-12 h-12 rounded-lg bg-slate-800 flex-shrink-0 overflow-hidden border border-slate-700">
                                                         {product.image_url ? (
                                                             <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
                                                         ) : (
@@ -447,11 +447,11 @@ function ProductsPage() {
                                                 </Badge>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                                    <button onClick={() => openEditModal(product)} className="p-2 rounded-xl bg-slate-700/50 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-400 transition-all cursor-pointer">
+                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => openEditModal(product)} className="p-2 rounded-lg bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer">
                                                         <Edit2 size={16} />
                                                     </button>
-                                                    <button onClick={() => setDeleteConfirm(product)} className="p-2 rounded-xl bg-slate-700/50 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 transition-all cursor-pointer">
+                                                    <button onClick={() => setDeleteConfirm(product)} className="p-2 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer">
                                                         <Trash2 size={16} />
                                                     </button>
                                                 </div>
@@ -474,7 +474,7 @@ function ProductsPage() {
                         <div className="flex items-start gap-4">
                             <div
                                 onClick={() => fileInputRef.current?.click()}
-                                className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-600 hover:border-indigo-500/50 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative group"
+                                className="w-24 h-24 rounded-lg border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-900 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative group"
                             >
                                 {imagePreview ? (
                                     <>

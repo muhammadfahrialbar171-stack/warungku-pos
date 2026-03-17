@@ -311,9 +311,9 @@ function ReportsPage() {
                 </div>
                 <div className="flex gap-3">
                     <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                        className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner" />
+                        className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 shadow-sm transition-all" />
                     <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                        className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 shadow-inner" />
+                        className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 shadow-sm transition-all" />
                 </div>
             </div >
 
@@ -336,7 +336,7 @@ function ReportsPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
+                        <Card className="bg-slate-900 border border-slate-800 shadow-sm relative overflow-hidden">
                             <h3 className="text-lg font-bold text-white drop-shadow-sm mb-4">Grafik Penjualan</h3>
                             <div className="h-64">
                                 {labels.length > 0 ? (
@@ -348,7 +348,7 @@ function ReportsPage() {
                                 )}
                             </div>
                         </Card>
-                        <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
+                        <Card className="bg-slate-900 border border-slate-800 shadow-sm relative overflow-hidden">
                             <h3 className="text-lg font-bold text-white drop-shadow-sm mb-4">Grafik Transaksi</h3>
                             <div className="h-64">
                                 {labels.length > 0 ? (
@@ -367,8 +367,8 @@ function ReportsPage() {
             {/* Sales Table */}
             {
                 !loading && labels.length > 0 && (
-                    <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5 shadow-xl shadow-black/10 mt-6">
-                        <div className="flex items-center justify-between p-4 md:p-6 border-b border-white/5 bg-slate-800/40">
+                    <Card className="!p-0 overflow-hidden bg-slate-900 border border-slate-800 shadow-sm mt-6">
+                        <div className="flex flex-col sm:flex-row items-center justify-between p-4 md:p-6 border-b border-slate-800 gap-4">
                             <h3 className="text-lg font-bold text-white drop-shadow-sm">Ringkasan {period === 'daily' ? 'Harian' : 'Bulanan'}</h3>
                             <div className="flex gap-2">
                                 <Button
@@ -376,7 +376,7 @@ function ReportsPage() {
                                     size="sm"
                                     icon={Download}
                                     onClick={() => exportDailySummaryToExcel(groupedData, labels, `ringkasan-${period}-${dateFrom}-${dateTo}`)}
-                                    className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm"
+                                    className="shadow-sm"
                                 >
                                     Excel
                                 </Button>
@@ -385,7 +385,7 @@ function ReportsPage() {
                                     size="sm"
                                     icon={Download}
                                     onClick={() => exportDailySummaryPDF(groupedData, labels, dateFrom, dateTo, user?.store_name)}
-                                    className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm"
+                                    className="shadow-sm"
                                 >
                                     PDF
                                 </Button>
@@ -394,7 +394,7 @@ function ReportsPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-800/40 border-b border-white/5 text-left">
+                                    <tr className="bg-slate-900 border-b border-slate-800 text-left">
                                         <th className="text-left text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Periode</th>
                                         <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Transaksi</th>
                                         <th className="text-right text-xs font-semibold text-slate-300 uppercase px-6 py-4 tracking-wider">Pendapatan</th>
@@ -418,7 +418,7 @@ function ReportsPage() {
                                     ))}
                                 </tbody>
                                 <tfoot>
-                                    <tr className="border-t border-white/10 bg-slate-800/60">
+                                    <tr className="border-t border-slate-800 bg-slate-900/50">
                                         <td className="px-6 py-5 text-sm font-bold text-white uppercase tracking-wider">Total</td>
                                         <td className="px-6 py-5 text-right text-sm font-bold text-white">{totalTransactions}</td>
                                         <td className="px-6 py-5 text-right text-sm font-bold text-indigo-400 drop-shadow-sm">{formatRupiah(totalSales)}</td>

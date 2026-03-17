@@ -158,7 +158,7 @@ export default function CustomersPage() {
                 description="Kelola data pelanggan dan poin member"
                 action={
                     isOwner && (
-                        <Button onClick={() => openModal()} className="relative w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25">
+                        <Button onClick={() => openModal()} className="relative w-full sm:w-auto">
                             <Plus size={18} className="mr-2" />
                             Tambah Pelanggan
                         </Button>
@@ -167,15 +167,15 @@ export default function CustomersPage() {
             />
 
             {/* Actions & List */}
-            <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5 shadow-xl shadow-black/10">
-                <div className="p-4 md:p-6 border-b border-white/5 bg-slate-800/40">
+            <Card className="!p-0 overflow-hidden">
+                <div className="p-4 md:p-6 border-b border-slate-800 bg-slate-900">
                     <div className="relative max-w-md">
                         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <Input
                             placeholder="Cari nama atau no WA pelanggan..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="bg-slate-800/40 backdrop-blur-md border hover:border-slate-600 border-slate-700/50 shadow-inner"
+                            className="bg-slate-900 border hover:border-slate-700 border-slate-800 shadow-sm"
                             icon={Search}
                         />
                     </div>
@@ -184,7 +184,7 @@ export default function CustomersPage() {
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
-                            <tr className="bg-slate-800/40 border-b border-white/5 text-left">
+                            <tr className="bg-slate-900 border-b border-slate-800 text-left">
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Info Pelanggan</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Kontak & Alamat</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Poin</th>
@@ -218,11 +218,11 @@ export default function CustomersPage() {
                                 customers.map((customer) => (
                                     <React.Fragment key={customer.id}>
                                         <tr
-                                            className="hover:bg-slate-800/40 transition-colors duration-200 group"
+                                            className="hover:bg-slate-800/50 transition-colors group"
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-white/5 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
                                                         {customer.name.charAt(0).toUpperCase()}
                                                     </div>
                                                     <div>
@@ -261,16 +261,16 @@ export default function CustomersPage() {
                                             </td>
                                             {isOwner && (
                                                 <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button
                                                             onClick={() => openModal(customer)}
-                                                            className="p-2 rounded-xl bg-slate-700/50 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-400 transition-all cursor-pointer"
+                                                            className="p-2 rounded-lg bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
                                                         >
                                                             <Edit2 size={16} />
                                                         </button>
                                                         <button
                                                             onClick={() => setDeleteModal({ isOpen: true, id: customer.id })}
-                                                            className="p-2 rounded-xl bg-slate-700/50 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400 transition-all cursor-pointer"
+                                                            className="p-2 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
@@ -295,7 +295,7 @@ export default function CustomersPage() {
                                                     ) : (
                                                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                                                             {txHistory[customer.id].map(tx => (
-                                                                <div key={tx.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl px-4 py-2.5 border border-white/5">
+                                                                <div key={tx.id} className="flex items-center justify-between bg-slate-900 rounded-xl px-4 py-2.5 border border-slate-800">
                                                                     <div>
                                                                         <p className="text-sm font-medium text-white">{tx.invoice_number}</p>
                                                                         <p className="text-xs text-slate-500">{formatDateTime(tx.created_at)}</p>
@@ -342,7 +342,7 @@ export default function CustomersPage() {
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-1.5">Alamat</label>
                         <textarea
-                            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder-slate-500 resize-none"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder-slate-500 resize-none"
                             placeholder="Alamat pelanggan..."
                             rows={3}
                             value={formData.address}

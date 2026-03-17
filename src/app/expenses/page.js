@@ -175,8 +175,7 @@ function ExpensesPage() {
     return (
         <div className="space-y-6 animate-fade-in relative z-10">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row shadow-lg glass border border-slate-800 rounded-2xl p-4 md:p-6 gap-4 justify-between items-start sm:items-center relative overflow-hidden bg-slate-900/60">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+            <div className="flex flex-col sm:flex-row bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 gap-4 justify-between items-start sm:items-center relative overflow-hidden shadow-sm">
 
                 <div className="relative">
                     <h1 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -193,11 +192,11 @@ function ExpensesPage() {
                             type="month"
                             value={month}
                             onChange={(e) => setMonth(e.target.value)}
-                            className="w-full sm:w-auto bg-slate-800/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2 text-white outline-none focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition-all shadow-inner"
+                            className="w-full sm:w-auto bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-white outline-none focus:ring-1 focus:ring-rose-500/50 shadow-sm transition-all"
                         />
                     </div>
                     {isOwner && (
-                        <Button onClick={() => openModal()} className="relative w-full sm:w-auto shadow-lg shadow-rose-500/20 bg-rose-600 hover:bg-rose-500 text-white border-0">
+                        <Button onClick={() => openModal()} className="relative w-full sm:w-auto">
                             <Plus size={18} className="mr-2" />
                             Tambah
                         </Button>
@@ -207,8 +206,7 @@ function ExpensesPage() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Card className="glass border-slate-800/60 shadow-xl overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <Card className="overflow-hidden relative">
                     <div className="relative">
                         <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center mb-3 text-rose-400">
                             <Wallet size={20} />
@@ -217,8 +215,7 @@ function ExpensesPage() {
                         <h3 className="text-3xl font-bold text-white tracking-tight">{formatRupiah(totalExpenses)}</h3>
                     </div>
                 </Card>
-                <Card className="glass border-slate-800/60 shadow-xl overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <Card className="overflow-hidden relative">
                     <div className="relative">
                         <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center mb-3 text-indigo-400">
                             <Tag size={20} />
@@ -230,11 +227,11 @@ function ExpensesPage() {
             </div>
 
             {/* Actions & List */}
-            <Card className="p-0 overflow-hidden border-slate-800/60 shadow-xl shadow-black/10">
+            <Card className="!p-0 overflow-hidden">
                 <div className="overflow-x-auto">
                     <Table>
                         <thead>
-                            <tr className="bg-slate-800/40 text-left">
+                            <tr className="bg-slate-900 border-b border-slate-800 text-left">
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Tanggal</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Keterangan</th>
                                 <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Kategori</th>
@@ -242,7 +239,7 @@ function ExpensesPage() {
                                 {isOwner && <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Aksi</th>}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60">
+                        <tbody className="divide-y divide-slate-800">
                             {loading ? (
                                 [...Array(3)].map((_, i) => (
                                     <tr key={i} className="animate-pulse">
@@ -268,7 +265,7 @@ function ExpensesPage() {
                                 expenses.map((expense) => (
                                     <tr
                                         key={expense.id}
-                                        className="hover:bg-slate-800/30 transition-colors group"
+                                        className="hover:bg-slate-800/50 transition-colors group"
                                     >
                                         <td className="px-6 py-4 text-sm text-slate-300 font-medium whitespace-nowrap">
                                             {dayjs(expense.expense_date).format('DD MMM YYYY')}
@@ -292,13 +289,13 @@ function ExpensesPage() {
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => openModal(expense)}
-                                                        className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-colors cursor-pointer"
+                                                        className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                                                     >
                                                         <Edit2 size={16} />
                                                     </button>
                                                     <button
                                                         onClick={() => setDeleteModal({ isOpen: true, id: expense.id })}
-                                                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                                        className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
@@ -334,7 +331,7 @@ function ExpensesPage() {
                                 Kategori
                             </label>
                             <select
-                                className="w-full bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-800/80 transition-all duration-300 cursor-pointer shadow-inner appearance-none"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer shadow-sm appearance-none"
                                 value={formData.category}
                                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                             >
@@ -375,7 +372,7 @@ function ExpensesPage() {
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-1.5">Catatan Tambahan (Opsional)</label>
                         <textarea
-                            className="w-full bg-slate-800/50 border border-slate-700/50 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder-slate-500 resize-none"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder-slate-500 resize-none shadow-sm"
                             placeholder="Detail pengeluaran..."
                             rows={3}
                             value={formData.notes}
@@ -387,7 +384,7 @@ function ExpensesPage() {
                         <Button type="button" variant="secondary" onClick={() => setModal({ isOpen: false, data: null })} disabled={saving}>
                             Batal
                         </Button>
-                        <Button type="submit" loading={saving} icon={Save} className="bg-rose-600 hover:bg-rose-500 text-white border-0">
+                        <Button type="submit" loading={saving} icon={Save}>
                             Simpan
                         </Button>
                     </div>

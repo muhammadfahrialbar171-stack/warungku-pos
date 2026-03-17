@@ -880,10 +880,10 @@ export default function CashierPage() {
               <button
                 onClick={() => setSelectedCategory("all")}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300 cursor-pointer",
+                  "px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors cursor-pointer",
                   selectedCategory === "all"
-                    ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/25 scale-105"
-                    : "bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white",
+                    ? "bg-indigo-600 text-white shadow-sm"
+                    : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white",
                 )}
               >
                 Semua
@@ -893,10 +893,10 @@ export default function CashierPage() {
                   key={cat.id}
                   onClick={() => setSelectedCategory(String(cat.id))}
                   className={cn(
-                    "px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-300 cursor-pointer",
+                    "px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors cursor-pointer",
                     selectedCategory === String(cat.id)
-                      ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/25 scale-105"
-                      : "bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white",
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white",
                   )}
                 >
                   {cat.name}
@@ -936,16 +936,16 @@ export default function CashierPage() {
                     }
                     disabled={outOfStock}
                     className={cn(
-                      "relative p-3 sm:p-4 rounded-3xl border text-left transition-all duration-300 cursor-pointer group flex flex-col items-center",
+                      "relative p-3 sm:p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer group flex flex-col items-center",
                       outOfStock
-                        ? "bg-slate-800/30 border-slate-800/50 opacity-60 cursor-not-allowed grayscale-[50%]"
+                        ? "bg-slate-900 border-slate-800 opacity-60 cursor-not-allowed grayscale-[50%]"
                         : inCart
-                          ? "bg-indigo-500/10 border-indigo-500/50 shadow-lg shadow-indigo-500/20 ring-1 ring-indigo-500"
-                          : "bg-slate-800/40 backdrop-blur-xl border-white/5 hover:border-indigo-500/50 hover:bg-slate-800/60 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10",
+                          ? "bg-indigo-500/10 border-indigo-500 ring-1 ring-inset ring-indigo-500/50"
+                          : "bg-slate-900 border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/50 hover:shadow-sm",
                     )}
                   >
                     {/* Product Image */}
-                    <div className="w-full aspect-square rounded-2xl bg-white/5 mb-3 overflow-hidden p-3 flex items-center justify-center transition-transform group-hover:scale-105 duration-300">
+                    <div className="w-full aspect-square rounded-lg bg-slate-800/50 mb-3 overflow-hidden p-3 flex items-center justify-center transition-transform group-hover:scale-105 duration-300">
                       {product.image_url ? (
                         <img
                           src={product.image_url}
@@ -1107,7 +1107,7 @@ export default function CashierPage() {
               items.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3 rounded-xl bg-slate-800/50 border border-slate-700 animate-fade-in"
+                  className="p-3 rounded-xl bg-slate-900 border border-slate-800 animate-fade-in"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -1240,7 +1240,7 @@ export default function CashierPage() {
       >
         <button
           onClick={() => setIsCartOpen(true)}
-          className="flex items-center gap-3 px-6 py-3.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-2xl shadow-indigo-500/30 transition-all pointer-events-auto cursor-pointer border border-indigo-400/50"
+          className="flex items-center gap-3 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-lg shadow-indigo-500/20 transition-all pointer-events-auto cursor-pointer border border-indigo-500/50"
         >
           <div className="flex items-center gap-2 font-bold">
             <ShoppingCart size={20} />

@@ -100,19 +100,19 @@ export default function TransactionsPage() {
                     <input
                         type="text" placeholder="Cari nomor invoice..." value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-sm"
                     />
                 </div>
                 <div className="flex gap-2">
                     <div className="relative">
                         <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                         <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                            className="bg-slate-800/50 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                            className="bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 shadow-sm" />
                     </div>
                     <div className="relative">
                         <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                         <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                            className="bg-slate-800/50 border border-slate-700 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                            className="bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 shadow-sm" />
                     </div>
                 </div>
             </div>
@@ -139,7 +139,7 @@ export default function TransactionsPage() {
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-slate-700">
+                                <tr className="bg-slate-900 border-b border-slate-800">
                                     <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3">Invoice</th>
                                     <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3 hidden sm:table-cell">Pelanggan</th>
                                     <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3 hidden sm:table-cell">Tanggal</th>
@@ -151,7 +151,7 @@ export default function TransactionsPage() {
                             </thead>
                             <tbody className="divide-y divide-slate-800">
                                 {filtered.map((tx) => (
-                                    <tr key={tx.id} className="hover:bg-slate-800/30 transition-colors">
+                                    <tr key={tx.id} className="hover:bg-slate-800/50 transition-colors">
                                         <td className="px-5 py-3.5 text-sm font-medium text-white">{tx.invoice_number}</td>
                                         <td className="px-5 py-3.5 text-sm text-slate-400 hidden sm:table-cell">{tx.customers?.name || '-'}</td>
                                         <td className="px-5 py-3.5 text-sm text-slate-400 hidden sm:table-cell">{formatDateTime(tx.created_at)}</td>
@@ -165,7 +165,7 @@ export default function TransactionsPage() {
                                             </Badge>
                                         </td>
                                         <td className="px-5 py-3.5 text-right">
-                                            <button onClick={() => viewDetail(tx)} className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer">
+                                            <button onClick={() => viewDetail(tx)} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer">
                                                 <Eye size={16} />
                                             </button>
                                         </td>
@@ -192,7 +192,7 @@ export default function TransactionsPage() {
                             <h4 className="text-sm font-medium text-slate-300 mb-3">Item Transaksi</h4>
                             <div className="space-y-2">
                                 {detailItems.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-700/30">
+                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
                                         <div>
                                             <p className="text-sm text-white">{item.product_name}</p>
                                             <p className="text-xs text-slate-500">{formatRupiah(item.price)} x {item.quantity}</p>

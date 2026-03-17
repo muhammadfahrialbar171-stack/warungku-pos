@@ -135,14 +135,14 @@ function StockPage() {
                     <h1 className="text-2xl font-bold text-white drop-shadow-sm">Manajemen Stok</h1>
                     <p className="text-slate-400 text-sm mt-1">Kelola stok dan riwayat perubahan</p>
                 </div>
-                <Button size="sm" onClick={() => setAdjustModal(true)} className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25">
+                <Button size="sm" onClick={() => setAdjustModal(true)}>
                     <Plus size={16} /> Sesuaikan Stok
                 </Button>
             </div>
 
             {/* Low Stock Alert */}
             {lowStockProducts.length > 0 && (
-                <Card className="!border-amber-500/30 !bg-amber-500/5">
+                <Card className="border border-amber-500/30 bg-amber-500/5">
                     <div className="flex items-start gap-3">
                         <div className="p-2 rounded-lg bg-amber-500/20">
                             <AlertTriangle size={20} className="text-amber-400" />
@@ -163,7 +163,7 @@ function StockPage() {
             )}
 
             {/* Stock History */}
-            <Card className="bg-slate-800/20 backdrop-blur-xl border-white/5">
+            <Card className="bg-slate-900 border border-slate-800 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold text-white drop-shadow-sm">Riwayat Stok</h3>
                     <div className="relative w-60">
@@ -171,7 +171,7 @@ function StockPage() {
                         <input
                             type="text" placeholder="Cari produk..." value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-slate-800/40 backdrop-blur-md border border-slate-700/50 hover:border-slate-600 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:bg-slate-800/80 transition-all duration-300 shadow-inner"
+                            className="w-full bg-slate-900 border border-slate-700 hover:border-slate-600 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 shadow-sm transition-all duration-300"
                         />
                     </div>
                 </div>
@@ -183,10 +183,10 @@ function StockPage() {
                 ) : (
                     <div className="space-y-2">
                         {filteredHistory.map((entry) => (
-                            <div key={entry.id} className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/20 border border-white/5 hover:bg-slate-800/50 transition-colors duration-200 group">
+                            <div key={entry.id} className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/20 border border-slate-800 hover:bg-slate-800/50 transition-colors duration-200 group">
                                 <div className={cn(
-                                    'p-2.5 rounded-xl shadow-inner',
-                                    entry.quantity > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                                    'p-2.5 rounded-lg border border-slate-700',
+                                    entry.quantity > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
                                 )}>
                                     {entry.quantity > 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                                 </div>

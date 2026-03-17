@@ -235,7 +235,7 @@ function SettingsPage() {
             {/* Profile Card */}
             <Card>
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-lg font-bold">
                         {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?'}
                     </div>
                     <div>
@@ -318,7 +318,7 @@ function SettingsPage() {
                                     <Upload size={16} /> Logo Toko (Maks 2MB)
                                 </h3>
                                 <div className="flex items-center gap-4">
-                                    <div className="w-20 h-20 rounded-xl bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center overflow-hidden">
+                                    <div className="w-20 h-20 rounded-xl bg-slate-900 border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden">
                                         {profile.logo_url ? (
                                             <img src={profile.logo_url} alt="Logo Toko" className="w-full h-full object-contain" />
                                         ) : (
@@ -336,7 +336,7 @@ function SettingsPage() {
                                         />
                                         <label
                                             htmlFor="logoUpload"
-                                            className="inline-flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-medium rounded-lg text-white cursor-pointer transition-colors"
+                                            className="inline-flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium rounded-lg text-white cursor-pointer transition-colors"
                                         >
                                             {uploadingLogo ? 'Mengunggah...' : 'Pilih Gambar'}
                                         </label>
@@ -383,8 +383,8 @@ function SettingsPage() {
                 <Card>
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                                <Users size={20} className="text-white" />
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
+                                <Users size={20} />
                             </div>
                             <div>
                                 <h2 className="text-lg font-semibold text-white">Tim Kasir</h2>
@@ -410,7 +410,7 @@ function SettingsPage() {
                                     className="flex items-center justify-between p-4 rounded-xl bg-slate-700/20 border border-slate-700"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-lg bg-slate-700 flex items-center justify-center text-white text-sm font-bold">
+                                        <div className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-sm font-bold">
                                             {cashier.full_name ? cashier.full_name.charAt(0).toUpperCase() : '?'}
                                         </div>
                                         <div>
@@ -450,8 +450,8 @@ function SettingsPage() {
             {/* Add Cashier Modal */}
             <Modal isOpen={addCashierModal} onClose={() => setAddCashierModal(false)} title="Tambah Akun Kasir" size="md">
                 <div className="space-y-4">
-                    <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                        <p className="text-xs text-indigo-300">Buat akun baru untuk karyawan Anda. Mereka hanya dapat mengakses halaman Kasir dan Dashboard.</p>
+                    <div className="p-3 rounded-xl bg-slate-800 border border-slate-700">
+                        <p className="text-xs text-slate-300">Buat akun baru untuk karyawan Anda. Mereka hanya dapat mengakses halaman Kasir dan Dashboard.</p>
                     </div>
                     <Input
                         label="Nama Kasir *"
