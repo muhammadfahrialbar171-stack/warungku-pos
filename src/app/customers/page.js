@@ -16,6 +16,7 @@ import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import { useToast } from '@/components/ui/Toast';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function CustomersPage() {
     const { user, session } = useAuthStore();
@@ -152,24 +153,18 @@ export default function CustomersPage() {
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row shadow-sm glass border border-slate-800 rounded-2xl p-4 md:p-6 gap-4 justify-between items-start sm:items-center relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-
-                <div className="relative">
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                        <Users size={28} className="text-indigo-400" />
-                        Pelanggan (CRM)
-                    </h1>
-                    <p className="text-slate-400 text-sm mt-1">Kelola data pelanggan dan poin member</p>
-                </div>
-
-                {isOwner && (
-                    <Button onClick={() => openModal()} className="relative w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25">
-                        <Plus size={18} className="mr-2" />
-                        Tambah Pelanggan
-                    </Button>
-                )}
-            </div>
+            <PageHeader
+                title="Pelanggan (CRM)"
+                description="Kelola data pelanggan dan poin member"
+                action={
+                    isOwner && (
+                        <Button onClick={() => openModal()} className="relative w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25">
+                            <Plus size={18} className="mr-2" />
+                            Tambah Pelanggan
+                        </Button>
+                    )
+                }
+            />
 
             {/* Actions & List */}
             <Card className="!p-0 overflow-hidden bg-slate-800/20 backdrop-blur-xl border-white/5 shadow-xl shadow-black/10">

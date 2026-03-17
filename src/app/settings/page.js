@@ -44,6 +44,7 @@ function SettingsPage() {
         receipt_footer: '',
         logo_url: '',
         theme_color: 'rose',
+        tax_rate: 0,
     });
 
     const THEME_COLORS = [
@@ -76,6 +77,7 @@ function SettingsPage() {
                 receipt_footer: user.receipt_footer || '',
                 logo_url: user.logo_url || '',
                 theme_color: user.theme_color || 'rose',
+                tax_rate: user.tax_rate || 0,
             });
             loadCashiers();
         }
@@ -104,6 +106,7 @@ function SettingsPage() {
                     receipt_footer: profile.receipt_footer,
                     logo_url: profile.logo_url,
                     theme_color: profile.theme_color,
+                    tax_rate: parseFloat(profile.tax_rate) || 0,
                 })
                 .eq('id', user.id);
 
@@ -292,6 +295,18 @@ function SettingsPage() {
                                 value={profile.receipt_footer}
                                 onChange={(e) => setProfile({ ...profile, receipt_footer: e.target.value })}
                                 placeholder="Cth: Terima Kasih Atas Kunjungan Anda"
+                            />
+                        </div>
+                    )}
+
+                    {isOwner && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                            <Input
+                                type="number"
+                                label="Pajak PPN (%)"
+                                value={profile.tax_rate}
+                                onChange={(e) => setProfile({ ...profile, tax_rate: e.target.value })}
+                                placeholder="Cth: 11"
                             />
                         </div>
                     )}

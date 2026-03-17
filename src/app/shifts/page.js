@@ -33,10 +33,7 @@ export default function ShiftsPage() {
             // But normally this page is `ownerOnly` as set in Sidebar.
             const query = supabase
                 .from('shifts')
-                .select(`
-                    *,
-                    users!shifts_user_id_fkey(full_name, email)
-                `)
+                .select('*')
                 .order('start_time', { ascending: false });
 
             // Depending on role (handle if non-owner accesses for some reason)
@@ -49,7 +46,24 @@ export default function ShiftsPage() {
             const { data, error } = await query;
             if (error) throw error;
 
-            let filteredData = data || [];
+            // Fetch users manually to avoid PGRST200 relation errors
+            const userIds = [...new Set((data || []).map(s => s.user_id))].filter(Boolean);
+            let usersMap = {};
+            if (userIds.length > 0) {
+                const { data: usersInfo } = await supabase
+                    .from('users')
+                    .select('id, full_name, email')
+                    .in('id', userIds);
+                if (usersInfo) {
+                    usersInfo.forEach(u => usersMap[u.id] = u);
+                }
+            }
+
+            let filteredData = (data || []).map(shift => ({
+                ...shift,
+                users: usersMap[shift.user_id] || null
+            }));
+
             if (debouncedSearch) {
                 const lowerSearch = debouncedSearch.toLowerCase();
                 filteredData = filteredData.filter(s =>

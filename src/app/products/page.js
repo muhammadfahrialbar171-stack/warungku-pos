@@ -22,6 +22,7 @@ import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import Input, { Select } from '@/components/ui/Input';
 import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatRupiah, cn } from '@/lib/utils';
@@ -328,23 +329,23 @@ function ProductsPage() {
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-white drop-shadow-sm">Produk</h1>
-                    <p className="text-slate-400 text-sm mt-1">Kelola produk toko Anda</p>
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="secondary" size="sm" onClick={() => setImportModal(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm">
-                        <FileSpreadsheet size={16} /> Import CSV
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setCategoryModalOpen(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm">
-                        <Plus size={16} /> Kategori
-                    </Button>
-                    <Button size="sm" onClick={openAddModal} className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25">
-                        <Plus size={16} /> Tambah Produk
-                    </Button>
-                </div>
-            </div>
+            <PageHeader
+                title="Produk"
+                description="Kelola produk toko Anda"
+                action={
+                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                        <Button variant="secondary" size="sm" onClick={() => setImportModal(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm flex-1 sm:flex-none justify-center">
+                            <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Import CSV</span>
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => setCategoryModalOpen(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm flex-1 sm:flex-none justify-center">
+                            <Plus size={16} /> Kategori
+                        </Button>
+                        <Button size="sm" onClick={openAddModal} className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 border-0 shadow-lg shadow-indigo-500/25 flex-1 sm:flex-none justify-center">
+                            <Plus size={16} /> Tambah Produk
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">

@@ -2,12 +2,13 @@
 
 import { cn } from '@/lib/utils';
 
-export default function Card({ children, className, hover = true, ...props }) {
+export default function Card({ children, className, hover = true, noPadding = false, ...props }) {
     return (
         <div
             className={cn(
-                'glass-card p-5 lg:p-6 rounded-2xl bg-slate-900/40 backdrop-blur-xl border border-white/10 shadow-xl',
-                hover && 'transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 hover:border-white/20',
+                'bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm',
+                !noPadding && 'p-5',
+                hover && 'transition-all duration-200 hover:border-slate-700 hover:bg-slate-800/30',
                 className
             )}
             {...props}
@@ -19,11 +20,11 @@ export default function Card({ children, className, hover = true, ...props }) {
 
 export function StatCard({ title, value, icon: Icon, trend, trendUp, color = 'indigo', className }) {
     const colorMap = {
-        indigo: 'from-indigo-500 to-purple-500 shadow-indigo-500/20',
-        emerald: 'from-emerald-500 to-green-500 shadow-emerald-500/20',
-        amber: 'from-amber-500 to-orange-500 shadow-amber-500/20',
-        rose: 'from-rose-500 to-pink-500 shadow-rose-500/20',
-        blue: 'from-blue-500 to-cyan-500 shadow-blue-500/20',
+        indigo: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20',
+        emerald: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+        amber: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+        rose: 'bg-rose-500/10 text-rose-400 border border-rose-500/20',
+        blue: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
     };
 
     return (
@@ -45,14 +46,11 @@ export function StatCard({ title, value, icon: Icon, trend, trendUp, color = 'in
                     )}
                 </div>
                 {Icon && (
-                    <div className={cn('p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-br shadow-xl ring-1 ring-white/20 group-hover:scale-110 transition-transform duration-300 flex-shrink-0 self-start sm:self-center', colorMap[color])}>
-                        <Icon size={24} className="text-white drop-shadow-sm" />
+                    <div className={cn('p-3 rounded-xl transition-transform duration-300 flex-shrink-0 self-start sm:self-center', colorMap[color])}>
+                        <Icon size={20} className="drop-shadow-sm" />
                     </div>
                 )}
             </div>
-            {/* Decorative gradient blur */}
-            <div className={cn('absolute -bottom-10 -right-10 w-40 h-40 rounded-full opacity-20 bg-gradient-to-br blur-3xl group-hover:opacity-30 transition-opacity duration-300', colorMap[color])} />
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl pointer-events-none" />
         </Card>
     );
 }

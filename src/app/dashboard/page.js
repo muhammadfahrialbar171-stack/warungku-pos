@@ -13,6 +13,7 @@ import { StatCard } from "@/components/ui/Card";
 import { withRBAC } from "@/components/layout/withRBAC";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import EmptyState from "@/components/ui/EmptyState";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
 import { formatRupiah, formatRupiahShort, formatDate } from "@/lib/utils";
@@ -398,12 +399,12 @@ function DashboardPage() {
       <div className="space-y-6 animate-fade-in">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="skeleton h-32 rounded-2xl" />
+            <div key={i} className="skeleton h-32 rounded-xl" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="skeleton h-80 rounded-2xl" />
-          <div className="skeleton h-80 rounded-2xl" />
+          <div className="skeleton h-80 rounded-xl" />
+          <div className="skeleton h-80 rounded-xl" />
         </div>
       </div>
     );
@@ -486,9 +487,9 @@ function DashboardPage() {
             {categoryData.labels.length > 0 ? (
               <Doughnut data={categoryChartData} options={pieOptions} />
             ) : (
-              <p className="text-sm text-slate-500">
-                Belum ada data penjualan bulan ini
-              </p>
+              <div className="scale-75 origin-top w-full">
+                 <EmptyState icon={PieChart} title="Belum Ada Data" description="Belum ada penjualan bulan ini" />
+              </div>
             )}
           </div>
         </Card>
@@ -510,9 +511,9 @@ function DashboardPage() {
             {paymentData.labels.length > 0 ? (
               <Pie data={paymentChartData} options={pieOptions} />
             ) : (
-              <p className="text-sm text-slate-500">
-                Belum ada data transaksi bulan ini
-              </p>
+              <div className="scale-75 origin-top w-full">
+                 <EmptyState icon={DollarSign} title="Belum Ada Data" description="Belum ada transaksi bulan ini" />
+              </div>
             )}
           </div>
         </Card>
@@ -528,16 +529,14 @@ function DashboardPage() {
           </div>
           <div className="space-y-3">
             {topProducts.length === 0 ? (
-              <p className="text-sm text-slate-500 py-4 text-center">
-                Belum ada data produk
-              </p>
+              <EmptyState icon={Package} title="Kosong" description="Belum ada data produk" />
             ) : (
               topProducts.map((product, index) => (
                 <div
                   key={product.id}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/30 hover:bg-slate-800/60 transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800/50 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center text-sm font-bold text-indigo-400">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-sm font-bold text-indigo-400">
                     {index + 1}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -572,9 +571,7 @@ function DashboardPage() {
           </div>
           <div className="space-y-3">
             {recentTransactions.length === 0 ? (
-              <p className="text-sm text-slate-500 py-4 text-center">
-                Belum ada transaksi
-              </p>
+              <EmptyState icon={ShoppingBag} title="Kosong" description="Belum ada transaksi" />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse min-w-[400px]">
@@ -586,11 +583,11 @@ function DashboardPage() {
                       <th className="pb-3 px-2 font-medium text-center">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/50">
+                  <tbody className="divide-y divide-slate-800">
                     {recentTransactions.map((tx) => (
                       <tr
                         key={tx.id}
-                        className="hover:bg-slate-800/30 transition-colors group"
+                        className="hover:bg-slate-800/50 transition-colors group"
                       >
                         <td className="py-3 px-2">
                           <span className="text-sm font-semibold text-white group-hover:text-indigo-400 transition-colors">

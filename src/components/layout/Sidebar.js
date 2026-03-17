@@ -42,14 +42,14 @@ export default function Sidebar({ collapsed, onToggle }) {
     return (
         <aside
             className={cn(
-                'fixed left-0 top-0 h-full bg-slate-900/80 backdrop-blur-2xl border-r border-white/5 shadow-2xl z-40 transition-all duration-300 hidden md:flex flex-col',
+                'fixed left-0 top-0 h-full bg-slate-900 border-r border-slate-800 z-40 transition-all duration-300 hidden md:flex flex-col',
                 collapsed ? 'w-20' : 'w-64'
             )}
         >
             {/* Logo */}
             <div className="p-5 border-b border-slate-800">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 flex-shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
                         <Store size={20} className="text-white" />
                     </div>
                     {!collapsed && (
@@ -79,24 +79,23 @@ export default function Sidebar({ collapsed, onToggle }) {
                                 key={item.href}
                                 href={item.href}
                                 className={cn(
-                                    'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 group relative overflow-hidden',
+                                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative',
                                     isActive
-                                        ? 'text-white bg-slate-800/80 shadow-lg shadow-indigo-500/10'
-                                        : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                                        ? 'text-white bg-slate-800'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                                 )}
                             >
                                 {isActive && (
                                     <>
-                                        {/* Glowing Left Border */}
-                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-3/4 bg-indigo-500 rounded-r-md shadow-[0_0_10px_rgba(99,102,241,0.8)]" />
-                                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent pointer-events-none" />
+                                        {/* Active Left Border Indicator */}
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3/4 bg-indigo-500 rounded-r-md" />
                                     </>
                                 )}
                                 <item.icon
                                     size={20}
                                     className={cn(
-                                        'flex-shrink-0 transition-all duration-300 z-10 relative',
-                                        isActive ? 'text-indigo-400 scale-110 drop-shadow-md' : 'text-slate-500 group-hover:text-slate-300 group-hover:scale-110'
+                                        'flex-shrink-0 transition-colors z-10 relative',
+                                        isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'
                                     )}
                                 />
                                 {!collapsed && <span className="z-10 relative">{item.label}</span>}

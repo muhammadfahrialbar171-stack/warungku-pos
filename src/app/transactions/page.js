@@ -22,6 +22,7 @@ import { formatRupiah, formatDateTime, formatDate } from '@/lib/utils';
 import { printReceipt, shareReceiptWhatsApp } from '@/lib/receipt';
 import { exportTransactionsToExcel } from '@/lib/export';
 import dayjs from 'dayjs';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function TransactionsPage() {
     const { user } = useAuthStore();
@@ -77,20 +78,20 @@ export default function TransactionsPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-white">Riwayat Transaksi</h1>
-                    <p className="text-slate-400 text-sm mt-1">Lihat semua transaksi yang telah dilakukan</p>
-                </div>
-                <Button
-                    variant="secondary"
-                    icon={Download}
-                    onClick={() => exportTransactionsToExcel(filtered, `transaksi-${dateFrom}-${dateTo}`)}
-                    disabled={filtered.length === 0}
-                >
-                    Export Excel
-                </Button>
-            </div>
+            <PageHeader
+                title="Riwayat Transaksi"
+                description="Lihat semua transaksi yang telah dilakukan"
+                action={
+                    <Button
+                        variant="secondary"
+                        icon={Download}
+                        onClick={() => exportTransactionsToExcel(filtered, `transaksi-${dateFrom}-${dateTo}`)}
+                        disabled={filtered.length === 0}
+                    >
+                        Export Excel
+                    </Button>
+                }
+            />
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
