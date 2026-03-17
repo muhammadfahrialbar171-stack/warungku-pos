@@ -21,6 +21,7 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import Input, { Select } from '@/components/ui/Input';
+import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import EmptyState from '@/components/ui/EmptyState';
 import PageHeader from '@/components/ui/PageHeader';
 import { supabase } from '@/lib/supabase';
@@ -334,14 +335,14 @@ function ProductsPage() {
                 description="Kelola produk toko Anda"
                 action={
                     <div className="flex flex-wrap gap-2 sm:gap-3">
-                        <Button variant="secondary" size="sm" onClick={() => setImportModal(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm flex-1 sm:flex-none justify-center">
-                            <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Import CSV</span>
+                        <Button variant="secondary" size="sm" onClick={() => setImportModal(true)} className="flex-1 sm:flex-none justify-center">
+                            <FileSpreadsheet size={16} className="mr-2" /> <span className="hidden sm:inline">Import CSV</span>
                         </Button>
-                        <Button variant="secondary" size="sm" onClick={() => setCategoryModalOpen(true)} className="bg-slate-800/50 backdrop-blur-md border-slate-700/50 hover:bg-slate-700/50 shadow-sm flex-1 sm:flex-none justify-center">
-                            <Plus size={16} /> Kategori
+                        <Button variant="secondary" size="sm" onClick={() => setCategoryModalOpen(true)} className="flex-1 sm:flex-none justify-center">
+                            <Plus size={16} className="mr-2"/> Kategori
                         </Button>
                         <Button size="sm" onClick={openAddModal} className="flex-1 sm:flex-none justify-center">
-                            <Plus size={16} /> Tambah Produk
+                            <Plus size={16} className="mr-2"/> Tambah Produk
                         </Button>
                     </div>
                 }
@@ -349,26 +350,25 @@ function ProductsPage() {
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="text"
+                <div className="flex-1">
+                    <Input
                         placeholder="Cari nama atau SKU produk..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-sm"
+                        icon={Search}
                     />
                 </div>
-                <select
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer transition-all shadow-sm appearance-none"
-                >
-                    <option value="all">Semua Kategori</option>
-                    {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                    ))}
-                </select>
+                <div className="w-full sm:w-64">
+                    <Select
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                    >
+                        <option value="all">Semua Kategori</option>
+                        {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                    </Select>
+                </div>
             </div>
 
             {/* Product List */}
@@ -381,100 +381,111 @@ function ProductsPage() {
                     icon={Package}
                     title="Belum ada produk"
                     description="Tambahkan produk pertama Anda untuk mulai berjualan."
-                    action={<Button size="sm" onClick={openAddModal}><Plus size={16} /> Tambah Produk</Button>}
+                    action={<Button size="sm" onClick={openAddModal}><Plus size={16} className="mr-2" /> Tambah Produk</Button>}
                 />
             ) : (
                 <Card className="!p-0 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse min-w-[800px]">
-                            <thead>
-                                <tr className="border-b border-slate-800 bg-slate-900">
-                                    <th className="text-left text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Produk</th>
-                                    <th className="text-left text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4 hidden sm:table-cell">Kategori</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Harga</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Stok</th>
-                                    <th className="text-right text-xs font-semibold text-slate-300 uppercase tracking-wider px-6 py-4">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {filtered.map((product) => {
-                                    const discountedPrice = getDiscountedPrice(product);
-                                    const hasDiscount = product.discount > 0;
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Produk</TableHead>
+                                <TableHead className="hidden sm:table-cell">Kategori</TableHead>
+                                <TableHead align="right">Harga</TableHead>
+                                <TableHead align="right">Stok</TableHead>
+                                <TableHead align="right">Aksi</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filtered.map((product) => {
+                                const discountedPrice = getDiscountedPrice(product);
+                                const hasDiscount = product.discount > 0;
 
-                                    return (
-                                        <tr key={product.id} className="hover:bg-slate-800/50 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    {/* Product Image */}
-                                                    <div className="w-12 h-12 rounded-lg bg-slate-800 flex-shrink-0 overflow-hidden border border-slate-700">
-                                                        {product.image_url ? (
-                                                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-slate-400">
-                                                                <Package size={20} />
-                                                            </div>
+                                return (
+                                    <TableRow key={product.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                {/* Product Image */}
+                                                <div className="w-12 h-12 rounded-lg bg-[var(--surface-2)] flex-shrink-0 overflow-hidden border border-[var(--surface-border)]">
+                                                    {product.image_url ? (
+                                                        <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
+                                                            <Package size={20} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-indigo-400 transition-colors">{product.name}</p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        {product.sku && <span className="text-xs text-[var(--text-muted)] font-medium bg-[var(--surface-2)] px-2 py-0.5 rounded-md border border-[var(--surface-border)]">{product.sku}</span>}
+                                                        {hasDiscount && (
+                                                            <Badge variant="warning" className="text-[10px] shadow-sm">
+                                                                {product.discount_type === 'percentage' ? `${product.discount}%` : formatRupiah(product.discount)} OFF
+                                                            </Badge>
                                                         )}
                                                     </div>
-                                                    <div>
-                                                        <p className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors">{product.name}</p>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            {product.sku && <span className="text-xs text-slate-400 font-medium bg-slate-800/80 px-2 py-0.5 rounded-md border border-white/5">{product.sku}</span>}
-                                                            {hasDiscount && (
-                                                                <Badge variant="warning" className="text-[10px] shadow-sm">
-                                                                    {product.discount_type === 'percentage' ? `${product.discount}%` : formatRupiah(product.discount)} OFF
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </div>
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4 hidden sm:table-cell">
-                                                <Badge variant="info" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20">{product.categories?.name || '-'}</Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {hasDiscount ? (
-                                                    <div>
-                                                        <p className="text-sm font-bold text-emerald-400 tracking-tight">{formatRupiah(discountedPrice)}</p>
-                                                        <p className="text-xs text-slate-500 line-through">{formatRupiah(product.price)}</p>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-sm font-bold text-slate-200 tracking-tight">{formatRupiah(product.price)}</p>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Badge variant={product.stock <= 5 ? (product.stock <= 0 ? 'danger' : 'warning') : 'success'} className="shadow-sm">
-                                                    {product.stock} Stok
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => openEditModal(product)} className="p-2 rounded-lg bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer">
-                                                        <Edit2 size={16} />
-                                                    </button>
-                                                    <button onClick={() => setDeleteConfirm(product)} className="p-2 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer">
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="hidden sm:table-cell">
+                                            <Badge variant="info" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20">{product.categories?.name || '-'}</Badge>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            {hasDiscount ? (
+                                                <div>
+                                                    <p className="text-sm font-bold text-emerald-400 tracking-tight">{formatRupiah(discountedPrice)}</p>
+                                                    <p className="text-xs text-[var(--text-muted)] line-through">{formatRupiah(product.price)}</p>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                            ) : (
+                                                <p className="text-sm font-bold text-[var(--text-primary)] tracking-tight">{formatRupiah(product.price)}</p>
+                                            )}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Badge variant={product.stock <= 5 ? (product.stock <= 0 ? 'danger' : 'warning') : 'success'} className="shadow-sm">
+                                                {product.stock} Stok
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => openEditModal(product)} className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-indigo-500/20 text-[var(--text-secondary)] hover:text-indigo-400 transition-colors cursor-pointer">
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button onClick={() => setDeleteConfirm(product)} className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 transition-colors cursor-pointer">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
                 </Card>
             )}
 
             {/* Product Modal */}
-            <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editProduct ? 'Edit Produk' : 'Tambah Produk'} size="lg">
+            <Modal
+                isOpen={modalOpen}
+                onClose={() => setModalOpen(false)}
+                title={editProduct ? 'Edit Produk' : 'Tambah Produk'}
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button variant="secondary" onClick={() => setModalOpen(false)}>Batal</Button>
+                        <Button onClick={handleSaveProduct} loading={saving}>
+                            {uploadingImage ? 'Uploading gambar...' : 'Simpan'}
+                        </Button>
+                    </div>
+                }
+            >
                 <div className="space-y-4">
                     {/* Image Upload */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">Gambar Produk</label>
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Gambar Produk</label>
                         <div className="flex items-start gap-4">
                             <div
                                 onClick={() => fileInputRef.current?.click()}
-                                className="w-24 h-24 rounded-lg border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-900 flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative group"
+                                className="w-24 h-24 rounded-lg border-2 border-dashed border-[var(--surface-border)] hover:border-indigo-500 bg-[var(--surface-2)] flex items-center justify-center cursor-pointer transition-colors overflow-hidden relative group"
                             >
                                 {imagePreview ? (
                                     <>
@@ -485,8 +496,8 @@ function ProductsPage() {
                                     </>
                                 ) : (
                                     <div className="text-center">
-                                        <ImageIcon size={24} className="mx-auto text-slate-500 mb-1" />
-                                        <span className="text-xs text-slate-500">Upload</span>
+                                        <ImageIcon size={24} className="mx-auto text-[var(--text-muted)] mb-1" />
+                                        <span className="text-xs text-[var(--text-muted)]">Upload</span>
                                     </div>
                                 )}
                             </div>
@@ -505,7 +516,7 @@ function ProductsPage() {
                                 onChange={handleImageSelect}
                                 className="hidden"
                             />
-                            <div className="text-xs text-slate-500 mt-1">
+                            <div className="text-xs text-[var(--text-muted)] mt-1">
                                 <p>JPG, PNG, WebP</p>
                                 <p>Maks. 5MB</p>
                             </div>
@@ -529,10 +540,10 @@ function ProductsPage() {
                     </div>
 
                     {/* Discount Section */}
-                    <div className="p-4 rounded-xl bg-slate-700/20 border border-slate-700 space-y-3">
+                    <div className="p-4 rounded-xl bg-[var(--surface-2)]/50 border border-[var(--surface-border)] space-y-3">
                         <div className="flex items-center gap-2">
                             <Tag size={16} className="text-amber-400" />
-                            <h4 className="text-sm font-medium text-white">Diskon Produk</h4>
+                            <h4 className="text-sm font-medium text-[var(--text-primary)]">Diskon Produk</h4>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <Input
@@ -552,7 +563,7 @@ function ProductsPage() {
                             </Select>
                         </div>
                         {form.discount && parseInt(form.discount) > 0 && form.price && (
-                            <div className="text-xs text-slate-400">
+                            <div className="text-xs text-[var(--text-muted)]">
                                 Harga setelah diskon: <span className="text-emerald-400 font-medium">
                                     {formatRupiah(
                                         form.discount_type === 'percentage'
@@ -564,63 +575,75 @@ function ProductsPage() {
                         )}
                         {form.discount && parseInt(form.discount) > 0 && (
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <label className="block text-xs font-medium text-slate-400">Mulai Diskon</label>
-                                    <input
-                                        type="date"
-                                        value={form.discount_start}
-                                        onChange={(e) => setForm({ ...form, discount_start: e.target.value })}
-                                        className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="block text-xs font-medium text-slate-400">Akhir Diskon</label>
-                                    <input
-                                        type="date"
-                                        value={form.discount_end}
-                                        onChange={(e) => setForm({ ...form, discount_end: e.target.value })}
-                                        className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                                    />
-                                </div>
+                                <Input
+                                    label="Mulai Diskon"
+                                    type="date"
+                                    value={form.discount_start}
+                                    onChange={(e) => setForm({ ...form, discount_start: e.target.value })}
+                                />
+                                <Input
+                                    label="Akhir Diskon"
+                                    type="date"
+                                    value={form.discount_end}
+                                    onChange={(e) => setForm({ ...form, discount_end: e.target.value })}
+                                />
                             </div>
                         )}
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                        <Button variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>Batal</Button>
-                        <Button className="flex-1" onClick={handleSaveProduct} loading={saving}>
-                            {uploadingImage ? 'Uploading gambar...' : 'Simpan'}
-                        </Button>
                     </div>
                 </div>
             </Modal>
 
             {/* Category Modal */}
-            <Modal isOpen={categoryModalOpen} onClose={() => setCategoryModalOpen(false)} title="Tambah Kategori" size="sm">
+            <Modal
+                isOpen={categoryModalOpen}
+                onClose={() => setCategoryModalOpen(false)}
+                title="Tambah Kategori"
+                size="sm"
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button variant="secondary" onClick={() => setCategoryModalOpen(false)}>Batal</Button>
+                        <Button onClick={handleSaveCategory}>Simpan</Button>
+                    </div>
+                }
+            >
                 <div className="space-y-4">
                     <Input label="Nama Kategori" value={categoryForm.name} onChange={(e) => setCategoryForm({ name: e.target.value })} placeholder="Contoh: Makanan" />
-                    <div className="flex gap-3">
-                        <Button variant="secondary" className="flex-1" onClick={() => setCategoryModalOpen(false)}>Batal</Button>
-                        <Button className="flex-1" onClick={handleSaveCategory}>Simpan</Button>
-                    </div>
                 </div>
             </Modal>
 
             {/* Delete Confirmation */}
-            <Modal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Hapus Produk?" size="sm">
-                <div className="space-y-4">
-                    <p className="text-slate-300 text-sm">
-                        Anda yakin ingin menghapus <strong className="text-white">{deleteConfirm?.name}</strong>? Aksi ini tidak dapat dibatalkan.
-                    </p>
-                    <div className="flex gap-3">
-                        <Button variant="secondary" className="flex-1" onClick={() => setDeleteConfirm(null)}>Batal</Button>
-                        <Button variant="danger" className="flex-1" onClick={() => handleDelete(deleteConfirm.id)}>Hapus</Button>
+            <Modal
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                title="Hapus Produk?"
+                size="sm"
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Batal</Button>
+                        <Button variant="danger" onClick={() => handleDelete(deleteConfirm.id)}>Hapus</Button>
                     </div>
-                </div>
+                }
+            >
+                <p className="text-[var(--text-secondary)] text-sm">
+                    Anda yakin ingin menghapus <strong className="text-[var(--text-primary)]">{deleteConfirm?.name}</strong>? Aksi ini tidak dapat dibatalkan.
+                </p>
             </Modal>
 
             {/* CSV Import Modal */}
-            <Modal isOpen={importModal} onClose={() => { setImportModal(false); setCsvData([]); }} title="Import Produk dari CSV" size="lg">
+            <Modal
+                isOpen={importModal}
+                onClose={() => { setImportModal(false); setCsvData([]); }}
+                title="Import Produk dari CSV"
+                size="lg"
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button variant="secondary" onClick={() => { setImportModal(false); setCsvData([]); }}>Batal</Button>
+                        <Button onClick={handleCsvImport} loading={importing} disabled={csvData.length === 0}>
+                            Import {csvData.length} Produk
+                        </Button>
+                    </div>
+                }
+            >
                 <div className="space-y-4">
                     <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
                         <p className="text-xs text-indigo-300">
@@ -632,7 +655,7 @@ function ProductsPage() {
                     <div className="flex gap-2">
                         <button
                             onClick={() => csvInputRef.current?.click()}
-                            className="flex-1 px-4 py-3 border-2 border-dashed border-slate-600 hover:border-indigo-500/50 rounded-xl text-sm text-slate-400 hover:text-white transition-all cursor-pointer text-center"
+                            className="flex-1 px-4 py-3 border-2 border-dashed border-[var(--surface-border)] hover:border-indigo-500/50 rounded-xl text-sm text-[var(--text-secondary)] hover:text-white transition-all cursor-pointer text-center"
                         >
                             <FileSpreadsheet size={20} className="mx-auto mb-1" />
                             {csvData.length > 0 ? `${csvData.length} baris data siap` : 'Pilih file CSV'}
@@ -640,7 +663,7 @@ function ProductsPage() {
                         <input ref={csvInputRef} type="file" accept=".csv" onChange={handleCsvSelect} className="hidden" />
                         <button
                             onClick={downloadCsvTemplate}
-                            className="flex items-center gap-1 px-4 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-sm text-slate-400 hover:text-white transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-4 py-3 rounded-xl bg-[var(--surface-2)] border border-[var(--surface-border)] text-sm text-[var(--text-secondary)] hover:text-white transition-colors cursor-pointer"
                         >
                             <Download size={16} />
                             Template
@@ -648,35 +671,28 @@ function ProductsPage() {
                     </div>
 
                     {csvData.length > 0 && (
-                        <div className="max-h-60 overflow-auto rounded-xl border border-slate-700">
+                        <div className="max-h-60 overflow-auto rounded-xl border border-[var(--surface-border)]">
                             <table className="w-full text-xs">
                                 <thead>
-                                    <tr className="bg-slate-800 border-b border-slate-700">
+                                    <tr className="bg-[var(--surface-2)] border-b border-[var(--surface-border)]">
                                         {Object.keys(csvData[0]).map((key) => (
-                                            <th key={key} className="px-3 py-2 text-left text-slate-400 font-medium">{key}</th>
+                                            <th key={key} className="px-3 py-2 text-left text-[var(--text-secondary)] font-medium">{key}</th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800">
+                                <tbody className="divide-y divide-[var(--surface-border)]">
                                     {csvData.slice(0, 20).map((row, i) => (
-                                        <tr key={i} className="hover:bg-slate-800/30">
+                                        <tr key={i} className="hover:bg-[var(--surface-2)]/30">
                                             {Object.values(row).map((val, j) => (
-                                                <td key={j} className="px-3 py-2 text-slate-300">{val}</td>
+                                                <td key={j} className="px-3 py-2 text-[var(--text-primary)]">{val}</td>
                                             ))}
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            {csvData.length > 20 && <p className="text-xs text-slate-500 text-center py-2">... dan {csvData.length - 20} baris lainnya</p>}
+                            {csvData.length > 20 && <p className="text-xs text-[var(--text-muted)] text-center py-2">... dan {csvData.length - 20} baris lainnya</p>}
                         </div>
                     )}
-
-                    <div className="flex gap-3 pt-2">
-                        <Button variant="secondary" className="flex-1" onClick={() => { setImportModal(false); setCsvData([]); }}>Batal</Button>
-                        <Button className="flex-1" onClick={handleCsvImport} loading={importing} disabled={csvData.length === 0}>
-                            Import {csvData.length} Produk
-                        </Button>
-                    </div>
                 </div>
             </Modal>
         </div>

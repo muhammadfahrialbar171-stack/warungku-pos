@@ -16,6 +16,7 @@ import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import Input, { Select, Textarea } from '@/components/ui/Input';
 import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatDate, cn } from '@/lib/utils';
@@ -130,15 +131,15 @@ function StockPage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-white drop-shadow-sm">Manajemen Stok</h1>
-                    <p className="text-slate-400 text-sm mt-1">Kelola stok dan riwayat perubahan</p>
-                </div>
-                <Button size="sm" onClick={() => setAdjustModal(true)}>
-                    <Plus size={16} /> Sesuaikan Stok
-                </Button>
-            </div>
+            <PageHeader
+                title="Manajemen Stok"
+                description="Kelola stok dan riwayat perubahan"
+                action={
+                    <Button size="sm" onClick={() => setAdjustModal(true)}>
+                        <Plus size={16} className="mr-2" /> Sesuaikan Stok
+                    </Button>
+                }
+            />
 
             {/* Low Stock Alert */}
             {lowStockProducts.length > 0 && (
@@ -149,7 +150,7 @@ function StockPage() {
                         </div>
                         <div>
                             <h3 className="font-medium text-amber-400 mb-1">Stok Rendah!</h3>
-                            <p className="text-sm text-slate-400 mb-2">{lowStockProducts.length} produk memiliki stok ≤ 5</p>
+                            <p className="text-sm text-[var(--text-secondary)] mb-2">{lowStockProducts.length} produk memiliki stok ≤ 5</p>
                             <div className="flex flex-wrap gap-2">
                                 {lowStockProducts.map((p) => (
                                     <Badge key={p.id} variant={p.stock <= 0 ? 'danger' : 'warning'}>
@@ -163,15 +164,15 @@ function StockPage() {
             )}
 
             {/* Stock History */}
-            <Card className="bg-slate-900 border border-slate-800 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-white drop-shadow-sm">Riwayat Stok</h3>
-                    <div className="relative w-60">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text" placeholder="Cari produk..." value={search}
+            <Card>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+                    <h3 className="text-lg font-bold text-[var(--text-primary)]">Riwayat Stok</h3>
+                    <div className="w-full sm:w-60">
+                        <Input
+                            placeholder="Cari produk..."
+                            value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 hover:border-slate-600 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 shadow-sm transition-all duration-300"
+                            icon={Search}
                         />
                     </div>
                 </div>
@@ -183,24 +184,24 @@ function StockPage() {
                 ) : (
                     <div className="space-y-2">
                         {filteredHistory.map((entry) => (
-                            <div key={entry.id} className="flex items-center gap-3 p-4 rounded-xl bg-slate-800/20 border border-slate-800 hover:bg-slate-800/50 transition-colors duration-200 group">
+                            <div key={entry.id} className="flex items-center gap-3 p-4 rounded-xl bg-[var(--surface-0)] border border-[var(--surface-border)] hover:bg-[var(--surface-2)]/50 transition-colors duration-200 group">
                                 <div className={cn(
-                                    'p-2.5 rounded-lg border border-slate-700',
+                                    'p-2.5 rounded-lg border border-[var(--surface-border)]',
                                     entry.quantity > 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
                                 )}>
                                     {entry.quantity > 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-white group-hover:text-indigo-300 transition-colors">{entry.products?.name}</p>
-                                    <p className="text-xs text-slate-400 mt-0.5">{entry.notes}</p>
+                                    <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-indigo-400 transition-colors">{entry.products?.name}</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{entry.notes}</p>
                                 </div>
                                 <div className="text-right">
                                     <p className={cn('text-sm font-bold tracking-tight', entry.quantity > 0 ? 'text-emerald-400' : 'text-rose-400')}>
                                         {entry.quantity > 0 ? '+' : ''}{entry.quantity}
                                     </p>
-                                    <p className="text-xs text-slate-500 mt-0.5">{entry.stock_before} → {entry.stock_after}</p>
+                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{entry.stock_before} → {entry.stock_after}</p>
                                 </div>
-                                <p className="text-xs text-slate-600 font-medium hidden sm:block ml-4">{formatDate(entry.created_at, 'DD MMM HH:mm')}</p>
+                                <p className="text-xs text-[var(--text-muted)] font-medium hidden sm:block ml-4">{formatDate(entry.created_at, 'DD MMM HH:mm')}</p>
                             </div>
                         ))}
                     </div>
@@ -208,7 +209,18 @@ function StockPage() {
             </Card>
 
             {/* Adjustment Modal */}
-            <Modal isOpen={adjustModal} onClose={() => setAdjustModal(false)} title="Sesuaikan Stok" size="md">
+            <Modal
+                isOpen={adjustModal}
+                onClose={() => setAdjustModal(false)}
+                title="Sesuaikan Stok"
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button variant="secondary" onClick={() => setAdjustModal(false)}>Batal</Button>
+                        <Button onClick={handleAdjust} loading={saving}>Simpan</Button>
+                    </div>
+                }
+            >
                 <div className="space-y-4">
                     <Select label="Produk *" value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })}>
                         <option value="">Pilih produk</option>
@@ -230,10 +242,6 @@ function StockPage() {
                             <Input label="Harga Beli/Unit" type="number" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: e.target.value })} placeholder="0" />
                         </div>
                     )}
-                    <div className="flex gap-3 pt-2">
-                        <Button variant="secondary" className="flex-1" onClick={() => setAdjustModal(false)}>Batal</Button>
-                        <Button className="flex-1" onClick={handleAdjust} loading={saving}>Simpan</Button>
-                    </div>
                 </div>
             </Modal>
         </div>

@@ -5,7 +5,9 @@ import { Barcode, Search, Printer, Package, Download, Check } from 'lucide-react
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import Input, { Select } from '@/components/ui/Input';
 import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import BarcodeComponent from 'react-barcode';
@@ -89,41 +91,38 @@ export default function BarcodePage() {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-white">Barcode Generator</h1>
-                    <p className="text-slate-400 text-sm mt-1">Generate dan cetak label barcode produk</p>
-                </div>
-                <div className="flex gap-2">
-                    <select
-                        value={labelSize}
-                        onChange={(e) => setLabelSize(e.target.value)}
-                        className="bg-slate-800/50 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
-                    >
-                        <option value="small">Kecil</option>
-                        <option value="medium">Sedang</option>
-                        <option value="large">Besar</option>
-                    </select>
-                    <Button
-                        icon={Printer}
-                        onClick={handlePrint}
-                        disabled={selected.length === 0}
-                    >
-                        Cetak {selected.length > 0 && `(${selected.length})`}
-                    </Button>
-                </div>
-            </div>
+            <PageHeader
+                title="Barcode Generator"
+                description="Generate dan cetak label barcode produk"
+                action={
+                    <div className="flex gap-2">
+                        <Select
+                            value={labelSize}
+                            onChange={(e) => setLabelSize(e.target.value)}
+                        >
+                            <option value="small">Kecil</option>
+                            <option value="medium">Sedang</option>
+                            <option value="large">Besar</option>
+                        </Select>
+                        <Button
+                            icon={Printer}
+                            onClick={handlePrint}
+                            disabled={selected.length === 0}
+                        >
+                            Cetak {selected.length > 0 && `(${selected.length})`}
+                        </Button>
+                    </div>
+                }
+            />
 
             {/* Search & Select All */}
             <div className="flex gap-3">
-                <div className="relative flex-1">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input
-                        type="text"
+                <div className="flex-1">
+                    <Input
                         placeholder="Cari produk atau SKU..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                        icon={Search}
                     />
                 </div>
                 <Button variant="secondary" size="sm" onClick={selectAll}>
@@ -148,7 +147,7 @@ export default function BarcodePage() {
                                 onClick={() => toggleSelect(product.id)}
                                 className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer ${isSelected
                                         ? 'bg-indigo-500/10 border-indigo-500/40'
-                                        : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                                        : 'bg-[var(--surface-0)] border-[var(--surface-border)] hover:border-indigo-500/30'
                                     }`}
                             >
                                 {isSelected && (
@@ -156,8 +155,8 @@ export default function BarcodePage() {
                                         <Check size={14} className="text-white" />
                                     </div>
                                 )}
-                                <p className="text-sm font-medium text-white truncate">{product.name}</p>
-                                <p className="text-xs text-slate-500 mt-0.5">SKU: {product.sku || 'N/A'}</p>
+                                <p className="text-sm font-medium text-[var(--text-primary)] truncate">{product.name}</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-0.5">SKU: {product.sku || 'N/A'}</p>
                                 <p className="text-sm font-bold text-indigo-400 mt-1">{formatRupiah(product.price)}</p>
                             </button>
                         );
@@ -168,7 +167,7 @@ export default function BarcodePage() {
             {/* Preview */}
             {selectedProducts.length > 0 && (
                 <Card>
-                    <h3 className="text-lg font-semibold text-white mb-4">Preview Barcode ({selectedProducts.length} produk)</h3>
+                    <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Preview Barcode ({selectedProducts.length} produk)</h3>
                     <div ref={printRef} className="flex flex-wrap gap-4">
                         {selectedProducts.map((product) => (
                             <div key={product.id} className="label p-3 rounded-xl bg-white text-center">

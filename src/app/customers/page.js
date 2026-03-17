@@ -10,8 +10,8 @@ import {
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import Table from '@/components/ui/Table';
-import Input from '@/components/ui/Input';
+import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import Input, { Textarea } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
@@ -168,155 +168,150 @@ export default function CustomersPage() {
 
             {/* Actions & List */}
             <Card className="!p-0 overflow-hidden">
-                <div className="p-4 md:p-6 border-b border-slate-800 bg-slate-900">
-                    <div className="relative max-w-md">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <div className="p-4 md:p-6 border-b border-[var(--surface-border)] bg-[var(--surface-0)]">
+                    <div className="max-w-md">
                         <Input
                             placeholder="Cari nama atau no WA pelanggan..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="bg-slate-900 border hover:border-slate-700 border-slate-800 shadow-sm"
                             icon={Search}
                         />
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse min-w-[600px]">
-                        <thead>
-                            <tr className="bg-slate-900 border-b border-slate-800 text-left">
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Info Pelanggan</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Kontak & Alamat</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Poin</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider">Terdaftar Sejak</th>
-                                {isOwner && <th className="px-6 py-4 text-xs font-semibold text-slate-300 uppercase tracking-wider text-right">Aksi</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {loading ? (
-                                [...Array(3)].map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td className="px-6 py-4"><div className="h-4 bg-slate-800 rounded w-3/4"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-slate-800 rounded w-1/2"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-slate-800 rounded w-1/4"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-slate-800 rounded w-2/3"></div></td>
-                                        {isOwner && <td className="px-6 py-4"><div className="h-8 bg-slate-800 rounded w-20 ml-auto"></div></td>}
-                                    </tr>
-                                ))
-                            ) : customers.length === 0 ? (
-                                <tr>
-                                    <td colSpan={isOwner ? 5 : 4}>
-                                        <EmptyState
-                                            icon={Users}
-                                            title="Belum Ada Pelanggan"
-                                            description="Data pelanggan yang ditambahkan akan muncul di sini."
-                                            action={isOwner ? <Button onClick={() => openModal()} variant="secondary" className="bg-slate-800 border-slate-700 hover:bg-slate-700 shadow-sm">Tambah Pelanggan</Button> : null}
-                                        />
-                                    </td>
-                                </tr>
-                            ) : (
-                                customers.map((customer) => (
-                                    <React.Fragment key={customer.id}>
-                                        <tr
-                                            className="hover:bg-slate-800/50 transition-colors group"
-                                        >
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
-                                                        {customer.name.charAt(0).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <button
-                                                            onClick={() => loadTxHistory(customer.id)}
-                                                            className="text-sm font-semibold text-white hover:text-indigo-300 transition-colors flex items-center gap-1 cursor-pointer"
-                                                        >
-                                                            {customer.name}
-                                                            {expandedCustomer === customer.id
-                                                                ? <ChevronUp size={14} className="text-indigo-400" />
-                                                                : <ChevronDown size={14} className="text-slate-500" />
-                                                            }
-                                                        </button>
-                                                        <p className="text-xs text-slate-500 mt-0.5">Klik untuk lihat riwayat</p>
-                                                    </div>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Info Pelanggan</TableHead>
+                            <TableHead>Kontak & Alamat</TableHead>
+                            <TableHead>Poin</TableHead>
+                            <TableHead>Terdaftar Sejak</TableHead>
+                            {isOwner && <TableHead align="right">Aksi</TableHead>}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            [...Array(3)].map((_, i) => (
+                                <TableRow key={i} className="animate-pulse">
+                                    <TableCell><div className="h-4 bg-[var(--surface-2)] rounded w-3/4"></div></TableCell>
+                                    <TableCell><div className="h-4 bg-[var(--surface-2)] rounded w-1/2"></div></TableCell>
+                                    <TableCell><div className="h-4 bg-[var(--surface-2)] rounded w-1/4"></div></TableCell>
+                                    <TableCell><div className="h-4 bg-[var(--surface-2)] rounded w-2/3"></div></TableCell>
+                                    {isOwner && <TableCell><div className="h-8 bg-[var(--surface-2)] rounded w-20 ml-auto"></div></TableCell>}
+                                </TableRow>
+                            ))
+                        ) : customers.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={isOwner ? 5 : 4}>
+                                    <EmptyState
+                                        icon={Users}
+                                        title="Belum Ada Pelanggan"
+                                        description="Data pelanggan yang ditambahkan akan muncul di sini."
+                                        action={isOwner ? <Button onClick={() => openModal()} variant="secondary">Tambah Pelanggan</Button> : null}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            customers.map((customer) => (
+                                <React.Fragment key={customer.id}>
+                                    <TableRow>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-[var(--surface-2)] border border-[var(--surface-border)] text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
+                                                    {customer.name.charAt(0).toUpperCase()}
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4 space-y-1">
-                                                <div className="flex items-center gap-2 text-sm text-slate-400">
-                                                    <Phone size={14} className="text-emerald-400 flex-shrink-0" />
-                                                    <span>{customer.phone || '-'}</span>
+                                                <div>
+                                                    <button
+                                                        onClick={() => loadTxHistory(customer.id)}
+                                                        className="text-sm font-semibold text-[var(--text-primary)] hover:text-indigo-400 transition-colors flex items-center gap-1 cursor-pointer"
+                                                    >
+                                                        {customer.name}
+                                                        {expandedCustomer === customer.id
+                                                            ? <ChevronUp size={14} className="text-indigo-400" />
+                                                            : <ChevronDown size={14} className="text-[var(--text-muted)]" />
+                                                        }
+                                                    </button>
+                                                    <p className="text-xs text-[var(--text-muted)] mt-0.5">Klik untuk lihat riwayat</p>
                                                 </div>
-                                                <div className="flex items-start gap-2 text-sm text-slate-400">
-                                                    <MapPin size={14} className="text-rose-400 flex-shrink-0 mt-0.5" />
-                                                    <span className="truncate max-w-[200px]">{customer.address || '-'}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)] mb-1">
+                                                <Phone size={14} className="text-emerald-400 flex-shrink-0" />
+                                                <span>{customer.phone || '-'}</span>
+                                            </div>
+                                            <div className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+                                                <MapPin size={14} className="text-rose-400 flex-shrink-0 mt-0.5" />
+                                                <span className="truncate max-w-[200px]">{customer.address || '-'}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="warning" className="flex items-center gap-1 w-max shadow-sm">
+                                                <Star size={12} className="fill-amber-400 text-amber-400" />
+                                                {customer.total_points || 0} Poin
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-sm font-medium text-[var(--text-secondary)]">
+                                            {formatDateTime(customer.created_at)}
+                                        </TableCell>
+                                        {isOwner && (
+                                            <TableCell align="right">
+                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => openModal(customer)}
+                                                        className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-indigo-500/20 text-[var(--text-secondary)] hover:text-indigo-400 transition-colors cursor-pointer"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteModal({ isOpen: true, id: customer.id })}
+                                                        className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 transition-colors cursor-pointer"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <Badge variant="warning" className="flex items-center gap-1 w-max shadow-sm">
-                                                    <Star size={12} className="fill-amber-400 text-amber-400" />
-                                                    {customer.total_points || 0} Poin
-                                                </Badge>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm font-medium text-slate-500">
-                                                {formatDateTime(customer.created_at)}
-                                            </td>
-                                            {isOwner && (
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={() => openModal(customer)}
-                                                            className="p-2 rounded-lg bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
-                                                        >
-                                                            <Edit2 size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setDeleteModal({ isOpen: true, id: customer.id })}
-                                                            className="p-2 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            )}
-                                        </tr>
-                                        {/* Transaction History Expansion Row */}
-                                        {expandedCustomer === customer.id && (
-                                            <tr className="bg-slate-800/30">
-                                                <td colSpan={isOwner ? 5 : 4} className="px-6 py-4">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <ShoppingBag size={16} className="text-indigo-400" />
-                                                        <span className="text-sm font-semibold text-indigo-300">Riwayat Transaksi</span>
-                                                    </div>
-                                                    {txLoading[customer.id] ? (
-                                                        <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
-                                                            <Loader2 size={16} className="animate-spin" /> Memuat...
-                                                        </div>
-                                                    ) : !txHistory[customer.id] || !Array.isArray(txHistory[customer.id]) || txHistory[customer.id].length === 0 ? (
-                                                        <p className="text-sm text-slate-500 py-2">Tidak ada riwayat transaksi.</p>
-                                                    ) : (
-                                                        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                                                            {txHistory[customer.id].map(tx => (
-                                                                <div key={tx.id} className="flex items-center justify-between bg-slate-900 rounded-xl px-4 py-2.5 border border-slate-800">
-                                                                    <div>
-                                                                        <p className="text-sm font-medium text-white">{tx.invoice_number}</p>
-                                                                        <p className="text-xs text-slate-500">{formatDateTime(tx.created_at)}</p>
-                                                                    </div>
-                                                                    <div className="text-right">
-                                                                        <p className="text-sm font-bold text-emerald-400">{formatRupiah(tx.total_amount)}</p>
-                                                                        <p className="text-xs text-slate-500 capitalize">{tx.payment_method}</p>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
+                                            </TableCell>
                                         )}
-                                    </React.Fragment>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                    </TableRow>
+                                    
+                                    {/* Transaction History Expansion Row */}
+                                    {expandedCustomer === customer.id && (
+                                        <TableRow className="bg-[var(--surface-2)]/30 hover:bg-[var(--surface-2)]/30">
+                                            <TableCell colSpan={isOwner ? 5 : 4}>
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <ShoppingBag size={16} className="text-indigo-400" />
+                                                    <span className="text-sm font-semibold text-indigo-400">Riwayat Transaksi</span>
+                                                </div>
+                                                {txLoading[customer.id] ? (
+                                                    <div className="flex items-center gap-2 text-[var(--text-muted)] text-sm py-2">
+                                                        <Loader2 size={16} className="animate-spin" /> Memuat...
+                                                    </div>
+                                                ) : !txHistory[customer.id] || !Array.isArray(txHistory[customer.id]) || txHistory[customer.id].length === 0 ? (
+                                                    <p className="text-sm text-[var(--text-muted)] py-2">Tidak ada riwayat transaksi.</p>
+                                                ) : (
+                                                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                                        {txHistory[customer.id].map(tx => (
+                                                            <div key={tx.id} className="flex items-center justify-between bg-[var(--surface-1)] rounded-xl px-4 py-2.5 border border-[var(--surface-border)]">
+                                                                <div>
+                                                                    <p className="text-sm font-medium text-[var(--text-primary)]">{tx.invoice_number}</p>
+                                                                    <p className="text-xs text-[var(--text-muted)]">{formatDateTime(tx.created_at)}</p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-sm font-bold text-emerald-400">{formatRupiah(tx.total_amount)}</p>
+                                                                    <p className="text-xs text-[var(--text-muted)] capitalize">{tx.payment_method}</p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </React.Fragment>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </Card>
 
             {/* Add/Edit Modal */}
@@ -324,8 +319,18 @@ export default function CustomersPage() {
                 isOpen={modal.isOpen}
                 onClose={() => !saving && setModal({ isOpen: false, data: null })}
                 title={modal.data ? 'Edit Pelanggan' : 'Tambah Pelanggan Baru'}
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button type="button" variant="secondary" onClick={() => setModal({ isOpen: false, data: null })} disabled={saving}>
+                            Batal
+                        </Button>
+                        <Button type="button" onClick={handleSave} loading={saving} icon={Save}>
+                            Simpan
+                        </Button>
+                    </div>
+                }
             >
-                <form onSubmit={handleSave} className="space-y-4">
+                <form id="customer-form" onSubmit={handleSave} className="space-y-4">
                     <Input
                         label="Nama Pelanggan"
                         placeholder="Masukkan nama pelanggan..."
@@ -339,25 +344,12 @@ export default function CustomersPage() {
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     />
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1.5">Alamat</label>
-                        <textarea
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder-slate-500 resize-none"
-                            placeholder="Alamat pelanggan..."
-                            rows={3}
-                            value={formData.address}
-                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        />
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                        <Button type="button" variant="secondary" onClick={() => setModal({ isOpen: false, data: null })} disabled={saving}>
-                            Batal
-                        </Button>
-                        <Button type="submit" loading={saving} icon={Save}>
-                            Simpan
-                        </Button>
-                    </div>
+                    <Textarea
+                        label="Alamat"
+                        placeholder="Alamat pelanggan..."
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    />
                 </form>
             </Modal>
 
@@ -367,12 +359,8 @@ export default function CustomersPage() {
                 onClose={() => !saving && setDeleteModal({ isOpen: false, id: null })}
                 title="Hapus Pelanggan"
                 size="sm"
-            >
-                <div>
-                    <p className="text-slate-400 mb-6">
-                        Apakah Anda yakin ingin menghapus pelanggan ini? Data riwayat poin mungkin akan terpengaruh.
-                    </p>
-                    <div className="flex justify-end gap-3">
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
                         <Button variant="secondary" onClick={() => setDeleteModal({ isOpen: false, id: null })} disabled={saving}>
                             Batal
                         </Button>
@@ -380,7 +368,11 @@ export default function CustomersPage() {
                             Ya, Hapus
                         </Button>
                     </div>
-                </div>
+                }
+            >
+                <p className="text-[var(--text-secondary)]">
+                    Apakah Anda yakin ingin menghapus pelanggan ini? Data riwayat poin mungkin akan terpengaruh.
+                </p>
             </Modal>
         </div>
     );

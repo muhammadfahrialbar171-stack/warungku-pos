@@ -10,6 +10,10 @@ import 'dayjs/locale/id';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
+import Card from '@/components/ui/Card';
+import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
 import { useDebounce } from '@/hooks/useDebounce';
 
 dayjs.locale('id');
@@ -81,27 +85,21 @@ export default function ShiftsPage() {
     };
 
     return (
-        <div className="p-6 md:p-8 space-y-8 animate-fade-in max-w-7xl mx-auto">
+        <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-                        <Clock className="text-indigo-500" size={32} />
-                        Histori Shift
-                    </h1>
-                    <p className="text-slate-400 mt-2 text-sm md:text-base">
-                        Pantau riwayat buka-tutup shift dan laporan kas per kasir
-                    </p>
-                </div>
+            <PageHeader
+                title="Histori Shift"
+                description="Pantau riwayat buka-tutup shift dan laporan kas per kasir"
+            />
 
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex w-full md:w-auto gap-3">
                     <div className="relative flex-1 md:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <Input
                             placeholder="Cari nama kasir..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="pl-10"
+                            icon={Search}
                         />
                     </div>
                 </div>
@@ -113,86 +111,84 @@ export default function ShiftsPage() {
                     <div className="flex justify-center mb-4">
                         <Clock className="animate-spin text-indigo-500" size={40} />
                     </div>
-                    <p className="text-slate-400">Memuat data shift...</p>
+                    <p className="text-[var(--text-secondary)]">Memuat data shift...</p>
                 </div>
             ) : shifts.length === 0 ? (
-                <div className="text-center py-20 bg-slate-900/50 rounded-2xl border border-slate-800">
-                    <Clock className="text-slate-600 mx-auto mb-4" size={48} />
-                    <p className="text-slate-400 text-lg">Belum ada riwayat shift</p>
-                </div>
+                <EmptyState
+                    icon={Clock}
+                    title="Belum ada riwayat shift"
+                />
             ) : (
-                <div className="bg-slate-900/50 rounded-2xl border border-slate-800 overflow-hidden shadow-xl shadow-black/20">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[800px]">
-                            <thead>
-                                <tr className="border-b border-slate-800 bg-slate-900/80 text-xs uppercase tracking-wider text-slate-400 font-semibold">
-                                    <th className="p-4 pl-6">Kasir & Waktu</th>
-                                    <th className="p-4">Status</th>
-                                    <th className="p-4">Modal Awal</th>
-                                    <th className="p-4">Sistem (Tunai)</th>
-                                    <th className="p-4">Aktual Kasir</th>
-                                    <th className="p-4 pr-6 text-right">Selisih</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/50">
-                                {shifts.map((shift) => {
-                                    const diff = shift.actual_cash !== null ? shift.actual_cash - shift.expected_cash : null;
-                                    const isOpen = shift.status === 'open';
+                <Card className="!p-0 overflow-hidden shadow-xl shadow-black/20">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="pl-6">Kasir & Waktu</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Modal Awal</TableHead>
+                                <TableHead>Sistem (Tunai)</TableHead>
+                                <TableHead>Aktual Kasir</TableHead>
+                                <TableHead align="right" className="pr-6">Selisih</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {shifts.map((shift) => {
+                                const diff = shift.actual_cash !== null ? shift.actual_cash - shift.expected_cash : null;
+                                const isOpen = shift.status === 'open';
 
-                                    return (
-                                        <tr key={shift.id} className="hover:bg-slate-800/30 transition-colors">
-                                            <td className="p-4 pl-6">
-                                                <div className="font-medium text-white mb-1">
-                                                    {shift.users?.full_name || shift.users?.email || 'Kasir'}
-                                                </div>
-                                                <div className="text-xs text-slate-400 flex flex-col gap-0.5">
-                                                    <span>Mulai: {dayjs(shift.start_time).format('DD MMM YYYY, HH:mm')}</span>
-                                                    {shift.end_time && (
-                                                        <span>Selesai: {dayjs(shift.end_time).format('DD MMM YYYY, HH:mm')}</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <Badge
-                                                    variant={isOpen ? 'primary' : 'success'}
-                                                    className="uppercase text-[10px] tracking-widest"
-                                                >
-                                                    {isOpen ? 'Aktif' : 'Selesai'}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-4 text-slate-300">
-                                                {formatRupiah(shift.starting_cash)}
-                                            </td>
-                                            <td className="p-4 text-slate-300">
-                                                {isOpen ? '-' : formatRupiah(shift.expected_cash)}
-                                            </td>
-                                            <td className="p-4 font-medium text-white">
-                                                {isOpen ? '-' : formatRupiah(shift.actual_cash)}
-                                            </td>
-                                            <td className="p-4 pr-6 text-right font-bold">
-                                                {isOpen || diff === null ? (
-                                                    <span className="text-slate-500">-</span>
-                                                ) : diff === 0 ? (
-                                                    <span className="text-emerald-400 flex items-center justify-end gap-1">
-                                                        <CheckCircle2 size={14} /> Pas
-                                                    </span>
-                                                ) : diff > 0 ? (
-                                                    <span className="text-amber-400 flex items-center justify-end gap-1">
-                                                        +{formatRupiah(diff)}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-rose-400 flex items-center justify-end gap-1">
-                                                        <AlertTriangle size={14} /> {formatRupiah(diff)}
-                                                    </span>
+                                return (
+                                    <TableRow key={shift.id}>
+                                        <TableCell className="pl-6">
+                                            <div className="font-medium text-[var(--text-primary)] mb-1">
+                                                {shift.users?.full_name || shift.users?.email || 'Kasir'}
+                                            </div>
+                                            <div className="text-xs text-[var(--text-secondary)] flex flex-col gap-0.5">
+                                                <span>Mulai: {dayjs(shift.start_time).format('DD MMM YYYY, HH:mm')}</span>
+                                                {shift.end_time && (
+                                                    <span>Selesai: {dayjs(shift.end_time).format('DD MMM YYYY, HH:mm')}</span>
                                                 )}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                variant={isOpen ? 'primary' : 'success'}
+                                                className="uppercase text-[10px] tracking-widest"
+                                            >
+                                                {isOpen ? 'Aktif' : 'Selesai'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-[var(--text-secondary)]">
+                                            {formatRupiah(shift.starting_cash)}
+                                        </TableCell>
+                                        <TableCell className="text-[var(--text-secondary)]">
+                                            {isOpen ? '-' : formatRupiah(shift.expected_cash)}
+                                        </TableCell>
+                                        <TableCell className="font-medium text-[var(--text-primary)]">
+                                            {isOpen ? '-' : formatRupiah(shift.actual_cash)}
+                                        </TableCell>
+                                        <TableCell align="right" className="pr-6 font-bold">
+                                            {isOpen || diff === null ? (
+                                                <span className="text-[var(--text-muted)]">-</span>
+                                            ) : diff === 0 ? (
+                                                <span className="text-emerald-400 flex items-center justify-end gap-1">
+                                                    <CheckCircle2 size={14} /> Pas
+                                                </span>
+                                            ) : diff > 0 ? (
+                                                <span className="text-amber-400 flex items-center justify-end gap-1">
+                                                    +{formatRupiah(diff)}
+                                                </span>
+                                            ) : (
+                                                <span className="text-rose-400 flex items-center justify-end gap-1">
+                                                    <AlertTriangle size={14} /> {formatRupiah(diff)}
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </Card>
             )}
         </div>
     );

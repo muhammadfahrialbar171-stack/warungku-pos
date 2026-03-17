@@ -23,6 +23,7 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
+import PageHeader from '@/components/ui/PageHeader';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatDate } from '@/lib/utils';
@@ -226,232 +227,244 @@ function SettingsPage() {
     const isOwner = !user?.role || user?.role === 'owner';
 
     return (
-        <div className="space-y-6 animate-fade-in max-w-3xl">
-            <div>
-                <h1 className="text-2xl font-bold text-white">Pengaturan</h1>
-                <p className="text-slate-400 text-sm mt-1">Kelola profil dan pengaturan toko Anda</p>
-            </div>
+        <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
+            <PageHeader
+                title="Pengaturan"
+                description="Kelola profil, pengaturan aplikasi, dan tim toko Anda"
+            />
 
-            {/* Profile Card */}
-            <Card>
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-lg font-bold">
-                        {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?'}
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-semibold text-white">Profil Toko</h2>
-                        <div className="flex items-center gap-2">
-                            <Badge variant={isOwner ? 'primary' : 'info'}>
-                                {isOwner ? 'Owner' : 'Kasir'}
-                            </Badge>
-                            <span className="text-xs text-slate-500">Bergabung {user?.created_at && formatDate(user.created_at)}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Input
-                            label="Nama Lengkap"
-                            icon={User}
-                            value={profile.full_name}
-                            onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                            placeholder="Nama Anda"
-                        />
-                        <Input
-                            label="Nama Toko"
-                            icon={Store}
-                            value={profile.store_name}
-                            onChange={(e) => setProfile({ ...profile, store_name: e.target.value })}
-                            placeholder="Nama toko Anda"
-                        />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Input
-                            label="No. Telepon"
-                            icon={Phone}
-                            value={profile.phone}
-                            onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                            placeholder="08xxxxxxxxxx"
-                        />
-                        <Input
-                            label="Email"
-                            icon={Mail}
-                            value={profile.email}
-                            disabled
-                        />
-                    </div>
-
-                    {isOwner && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                            <Input
-                                label="Slogan / Header Struk"
-                                value={profile.receipt_header}
-                                onChange={(e) => setProfile({ ...profile, receipt_header: e.target.value })}
-                                placeholder="Cth: Belanja Hemat Harga Merakyat"
-                            />
-                            <Input
-                                label="Pesan Penutup / Footer Struk"
-                                value={profile.receipt_footer}
-                                onChange={(e) => setProfile({ ...profile, receipt_footer: e.target.value })}
-                                placeholder="Cth: Terima Kasih Atas Kunjungan Anda"
-                            />
-                        </div>
-                    )}
-
-                    {isOwner && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                            <Input
-                                type="number"
-                                label="Pajak PPN (%)"
-                                value={profile.tax_rate}
-                                onChange={(e) => setProfile({ ...profile, tax_rate: e.target.value })}
-                                placeholder="Cth: 11"
-                            />
-                        </div>
-                    )}
-
-                    {isOwner && (
-                        <div className="grid grid-cols-1 gap-6 mt-4 border-t border-slate-700 pt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Profile Card */}
+                <div className="lg:col-span-2 space-y-6">
+                    <Card>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 rounded-xl bg-[var(--surface-2)] text-indigo-400 border border-[var(--surface-border)] flex items-center justify-center text-lg font-bold">
+                                {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : '?'}
+                            </div>
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                                    <Upload size={16} /> Logo Toko (Maks 2MB)
-                                </h3>
-                                <div className="flex items-center gap-4">
-                                    <div className="w-20 h-20 rounded-xl bg-slate-900 border-2 border-dashed border-slate-700 flex items-center justify-center overflow-hidden">
-                                        {profile.logo_url ? (
-                                            <img src={profile.logo_url} alt="Logo Toko" className="w-full h-full object-contain" />
-                                        ) : (
-                                            <Store size={32} className="text-slate-500" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleUploadLogo}
-                                            disabled={uploadingLogo}
-                                            id="logoUpload"
-                                            className="hidden"
-                                        />
-                                        <label
-                                            htmlFor="logoUpload"
-                                            className="inline-flex items-center px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium rounded-lg text-white cursor-pointer transition-colors"
-                                        >
-                                            {uploadingLogo ? 'Mengunggah...' : 'Pilih Gambar'}
-                                        </label>
-                                        <p className="text-xs text-slate-500 mt-2">Logo akan dicetak pada struk thermal. Gunakan gambar hitam putih dengan rasio 1:1 atau 3:2 untuk hasil terbaik.</p>
-                                    </div>
+                                <h2 className="text-lg font-semibold text-[var(--text-primary)]">Profil Toko</h2>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <Badge variant={isOwner ? 'primary' : 'info'}>
+                                        {isOwner ? 'Owner' : 'Kasir'}
+                                    </Badge>
+                                    <span className="text-xs text-[var(--text-muted)]">Bergabung {user?.created_at && formatDate(user.created_at)}</span>
                                 </div>
                             </div>
+                        </div>
 
-                            <div>
-                                <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                                    <Palette size={16} /> Warna Tema Aplikasi
-                                </h3>
-                                <div className="flex flex-wrap gap-3">
-                                    {THEME_COLORS.map(theme => (
-                                        <button
-                                            key={theme.id}
-                                            onClick={() => setProfile({ ...profile, theme_color: theme.id })}
-                                            className={`w-12 h-12 rounded-full ${theme.color} border-4 transition-all ${profile.theme_color === theme.id ? 'border-white scale-110 shadow-lg shadow-white/20' : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'}`}
-                                            title={theme.name}
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Input
+                                    label="Nama Lengkap"
+                                    icon={User}
+                                    value={profile.full_name}
+                                    onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                                    placeholder="Nama Anda"
+                                />
+                                <Input
+                                    label="Nama Toko"
+                                    icon={Store}
+                                    value={profile.store_name}
+                                    onChange={(e) => setProfile({ ...profile, store_name: e.target.value })}
+                                    placeholder="Nama toko Anda"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Input
+                                    label="No. Telepon"
+                                    icon={Phone}
+                                    value={profile.phone}
+                                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                                    placeholder="08xxxxxxxxxx"
+                                />
+                                <Input
+                                    label="Email"
+                                    icon={Mail}
+                                    value={profile.email}
+                                    disabled
+                                />
+                            </div>
+
+                            {isOwner && (
+                                <>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                                        <Input
+                                            label="Slogan / Header Struk"
+                                            value={profile.receipt_header}
+                                            onChange={(e) => setProfile({ ...profile, receipt_header: e.target.value })}
+                                            placeholder="Cth: Belanja Hemat Harga Merakyat"
                                         />
+                                        <Input
+                                            label="Pesan Penutup / Footer Struk"
+                                            value={profile.receipt_footer}
+                                            onChange={(e) => setProfile({ ...profile, receipt_footer: e.target.value })}
+                                            placeholder="Cth: Terima Kasih Atas Kunjungan Anda"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                                        <Input
+                                            type="number"
+                                            label="Pajak PPN (%)"
+                                            value={profile.tax_rate}
+                                            onChange={(e) => setProfile({ ...profile, tax_rate: e.target.value })}
+                                            placeholder="Cth: 11"
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-6 mt-4 border-t border-[var(--surface-border)] pt-6">
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                                                <Upload size={16} className="text-[var(--text-muted)]"/> Logo Toko (Maks 2MB)
+                                            </h3>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-20 h-20 rounded-xl bg-[var(--surface-2)] border-2 border-dashed border-[var(--surface-border)] flex items-center justify-center overflow-hidden">
+                                                    {profile.logo_url ? (
+                                                        <img src={profile.logo_url} alt="Logo Toko" className="w-full h-full object-contain" />
+                                                    ) : (
+                                                        <Store size={32} className="text-[var(--text-muted)]" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={handleUploadLogo}
+                                                        disabled={uploadingLogo}
+                                                        id="logoUpload"
+                                                        className="hidden"
+                                                    />
+                                                    <label
+                                                        htmlFor="logoUpload"
+                                                        className="inline-flex items-center px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--surface-3)] border border-[var(--surface-border)] text-sm font-medium rounded-lg text-[var(--text-primary)] cursor-pointer transition-colors"
+                                                    >
+                                                        {uploadingLogo ? 'Mengunggah...' : 'Pilih Gambar'}
+                                                    </label>
+                                                    <p className="text-xs text-[var(--text-muted)] mt-2">Logo akan dicetak pada struk thermal. Gunakan gambar hitam putih dengan rasio 1:1 atau 3:2 untuk hasil terbaik.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                                                <Palette size={16} className="text-[var(--text-muted)]"/> Warna Tema Aplikasi
+                                            </h3>
+                                            <div className="flex flex-wrap gap-3">
+                                                {THEME_COLORS.map(theme => (
+                                                    <button
+                                                        key={theme.id}
+                                                        onClick={() => setProfile({ ...profile, theme_color: theme.id })}
+                                                        className={`w-12 h-12 rounded-full ${theme.color} border-4 transition-all ${profile.theme_color === theme.id ? 'border-white scale-110 shadow-lg shadow-white/20' : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105 cursor-pointer'}`}
+                                                        title={theme.name}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-[var(--text-muted)] mt-2">Pilih warna yang paling sesuai dengan identitas toko Anda.</p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 mt-2 border-t border-[var(--surface-border)]">
+                                <Button className="w-full sm:w-auto" onClick={handleSaveProfile} loading={saving} icon={Save}>
+                                    Simpan Profil
+                                </Button>
+                                {saved && (
+                                    <div className="flex items-center justify-center sm:justify-start gap-1.5 text-emerald-400 text-sm animate-fade-in">
+                                        <CheckCircle size={16} />
+                                        <span>Tersimpan!</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+
+                {/* Team Management - Owner only */}
+                <div className="space-y-6">
+                    {isOwner ? (
+                        <Card>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                                    <Users size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">Tim Kasir</h2>
+                                </div>
+                                <Button size="xs" icon={UserPlus} onClick={() => setAddCashierModal(true)}>
+                                    Tambah
+                                </Button>
+                            </div>
+
+                            {cashiers.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <div className="w-16 h-16 mx-auto bg-[var(--surface-2)] rounded-full flex items-center justify-center mb-3">
+                                        <Users size={24} className="text-[var(--text-muted)]" />
+                                    </div>
+                                    <p className="text-[var(--text-primary)] font-medium text-sm">Belum ada kasir</p>
+                                    <p className="text-[var(--text-muted)] text-xs mt-1">Tambah akun untuk karyawan Anda</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {cashiers.map((cashier) => (
+                                        <div
+                                            key={cashier.id}
+                                            className="flex flex-col p-3 rounded-xl bg-[var(--surface-0)] border border-[var(--surface-border)]"
+                                        >
+                                            <div className="flex flex-row items-center justify-between mb-2">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-xs font-bold">
+                                                        {cashier.full_name ? cashier.full_name.charAt(0).toUpperCase() : '?'}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-[var(--text-primary)]">{cashier.full_name}</p>
+                                                        <p className="text-xs text-[var(--text-muted)]">{cashier.email}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-2 mt-1 border-t border-[var(--surface-border)]">
+                                                <Badge variant="info">Kasir</Badge>
+                                                <button
+                                                    onClick={() => setDeleteConfirm(cashier)}
+                                                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-400 transition-colors cursor-pointer"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
-                                <p className="text-xs text-slate-500 mt-2">Pilih warna yang paling sesuai dengan identitas toko Anda.</p>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex items-center gap-3 pt-2">
-                        <Button onClick={handleSaveProfile} loading={saving} icon={Save}>
-                            Simpan Profil
-                        </Button>
-                        {saved && (
-                            <div className="flex items-center gap-1.5 text-emerald-400 text-sm animate-fade-in">
-                                <CheckCircle size={16} />
-                                <span>Tersimpan!</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </Card>
-
-            {/* Team Management - Owner only */}
-            {isOwner && (
-                <Card>
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
-                                <Users size={20} />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-semibold text-white">Tim Kasir</h2>
-                                <p className="text-sm text-slate-400">Kelola akun karyawan kasir</p>
-                            </div>
-                        </div>
-                        <Button size="sm" icon={UserPlus} onClick={() => setAddCashierModal(true)}>
-                            Tambah Kasir
-                        </Button>
-                    </div>
-
-                    {cashiers.length === 0 ? (
-                        <div className="text-center py-8">
-                            <Users size={40} className="mx-auto text-slate-600 mb-3" />
-                            <p className="text-slate-500 text-sm">Belum ada kasir</p>
-                            <p className="text-slate-600 text-xs mt-1">Tambah akun kasir agar karyawan bisa mengoperasikan POS</p>
-                        </div>
+                            )}
+                        </Card>
                     ) : (
-                        <div className="space-y-3">
-                            {cashiers.map((cashier) => (
-                                <div
-                                    key={cashier.id}
-                                    className="flex items-center justify-between p-4 rounded-xl bg-slate-700/20 border border-slate-700"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 flex items-center justify-center text-sm font-bold">
-                                            {cashier.full_name ? cashier.full_name.charAt(0).toUpperCase() : '?'}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-white">{cashier.full_name}</p>
-                                            <p className="text-xs text-slate-500">{cashier.email}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="info">Kasir</Badge>
-                                        <button
-                                            onClick={() => setDeleteConfirm(cashier)}
-                                            className="p-2 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
+                        <Card>
+                            <div className="flex items-center gap-3">
+                                <Shield size={20} className="text-amber-400" />
+                                <div>
+                                    <h3 className="text-sm font-medium text-[var(--text-primary)]">Mode Kasir</h3>
+                                    <p className="text-xs text-[var(--text-muted)]">Beberapa pengaturan sistem tidak dapat diakses.</p>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
+                        </Card>
                     )}
-                </Card>
-            )}
-
-            {/* Cashier info */}
-            {!isOwner && (
-                <Card>
-                    <div className="flex items-center gap-3">
-                        <Shield size={20} className="text-amber-400" />
-                        <div>
-                            <h3 className="text-sm font-medium text-white">Mode Kasir</h3>
-                            <p className="text-xs text-slate-400">Anda login sebagai kasir. Beberapa fitur seperti produk, laporan, dan pengaturan hanya bisa diakses oleh owner.</p>
-                        </div>
-                    </div>
-                </Card>
-            )}
+                </div>
+            </div>
 
             {/* Add Cashier Modal */}
-            <Modal isOpen={addCashierModal} onClose={() => setAddCashierModal(false)} title="Tambah Akun Kasir" size="md">
+            <Modal
+                isOpen={addCashierModal}
+                onClose={() => setAddCashierModal(false)}
+                title="Tambah Akun Kasir"
+                size="md"
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button variant="secondary" onClick={() => setAddCashierModal(false)}>Batal</Button>
+                        <Button onClick={handleAddCashier} loading={addingCashier}>Buat Akun</Button>
+                    </div>
+                }
+            >
                 <div className="space-y-4">
-                    <div className="p-3 rounded-xl bg-slate-800 border border-slate-700">
-                        <p className="text-xs text-slate-300">Buat akun baru untuk karyawan Anda. Mereka hanya dapat mengakses halaman Kasir dan Dashboard.</p>
+                    <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 mb-4">
+                        <p className="text-xs text-indigo-300">Buat akun agar karyawan Anda dapat login dan menggunakan POS.</p>
                     </div>
                     <Input
                         label="Nama Kasir *"
@@ -479,29 +492,30 @@ function SettingsPage() {
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-9 text-slate-500 hover:text-white cursor-pointer"
+                            className="absolute right-3 top-9 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
                         >
                             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                        <Button variant="secondary" className="flex-1" onClick={() => setAddCashierModal(false)}>Batal</Button>
-                        <Button className="flex-1" onClick={handleAddCashier} loading={addingCashier}>Buat Akun Kasir</Button>
                     </div>
                 </div>
             </Modal>
 
             {/* Delete Cashier Confirm */}
-            <Modal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Hapus Kasir?" size="sm">
-                <div className="space-y-4">
-                    <p className="text-slate-300 text-sm">
-                        Hapus akun kasir <strong className="text-white">{deleteConfirm?.full_name}</strong> ({deleteConfirm?.email})? Akun ini tidak akan bisa login lagi.
-                    </p>
-                    <div className="flex gap-3">
-                        <Button variant="secondary" className="flex-1" onClick={() => setDeleteConfirm(null)}>Batal</Button>
-                        <Button variant="danger" className="flex-1" onClick={() => handleDeleteCashier(deleteConfirm.id)}>Hapus</Button>
+            <Modal
+                isOpen={!!deleteConfirm}
+                onClose={() => setDeleteConfirm(null)}
+                title="Hapus Kasir?"
+                size="sm"
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>Batal</Button>
+                        <Button variant="danger" onClick={() => handleDeleteCashier(deleteConfirm.id)}>Hapus</Button>
                     </div>
-                </div>
+                }
+            >
+                <p className="text-[var(--text-secondary)] text-sm">
+                    Hapus akun kasir <strong className="text-[var(--text-primary)]">{deleteConfirm?.full_name}</strong>? Akun ini tidak akan bisa login lagi.
+                </p>
             </Modal>
         </div>
     );

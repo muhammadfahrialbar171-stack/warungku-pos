@@ -15,6 +15,8 @@ import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
+import Input from '@/components/ui/Input';
+import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import EmptyState from '@/components/ui/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -95,24 +97,30 @@ export default function TransactionsPage() {
 
             {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input
-                        type="text" placeholder="Cari nomor invoice..." value={search}
+                <div className="flex-1">
+                    <Input
+                        placeholder="Cari nomor invoice..."
+                        value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-sm"
+                        icon={Search}
                     />
                 </div>
-                <div className="flex gap-2">
-                    <div className="relative">
-                        <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                            className="bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 shadow-sm" />
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <div className="flex-1 sm:w-40">
+                        <Input
+                            type="date"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                            icon={Calendar}
+                        />
                     </div>
-                    <div className="relative">
-                        <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                            className="bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500/50 shadow-sm" />
+                    <div className="flex-1 sm:w-40">
+                        <Input
+                            type="date"
+                            value={dateTo}
+                            onChange={(e) => setDateTo(e.target.value)}
+                            icon={Calendar}
+                        />
                     </div>
                 </div>
             </div>
@@ -120,11 +128,11 @@ export default function TransactionsPage() {
             {/* Summary */}
             <div className="flex gap-4 flex-wrap">
                 <Card className="flex-1 min-w-[180px]">
-                    <p className="text-sm text-slate-400">Total Transaksi</p>
-                    <p className="text-2xl font-bold text-white mt-1">{filtered.length}</p>
+                    <p className="text-sm text-[var(--text-secondary)]">Total Transaksi</p>
+                    <p className="text-2xl font-bold text-[var(--text-primary)] mt-1">{filtered.length}</p>
                 </Card>
                 <Card className="flex-1 min-w-[180px]">
-                    <p className="text-sm text-slate-400">Total Penjualan</p>
+                    <p className="text-sm text-[var(--text-secondary)]">Total Penjualan</p>
                     <p className="text-2xl font-bold text-emerald-400 mt-1">{formatRupiah(totalAmount)}</p>
                 </Card>
             </div>
@@ -136,44 +144,42 @@ export default function TransactionsPage() {
                 <EmptyState icon={Receipt} title="Belum ada transaksi" description="Transaksi akan muncul di sini setelah checkout dari kasir." />
             ) : (
                 <Card className="!p-0 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-slate-900 border-b border-slate-800">
-                                    <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3">Invoice</th>
-                                    <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3 hidden sm:table-cell">Pelanggan</th>
-                                    <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3 hidden sm:table-cell">Tanggal</th>
-                                    <th className="text-left text-xs font-medium text-slate-400 uppercase px-5 py-3 hidden md:table-cell">Pembayaran</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-5 py-3">Total</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-5 py-3">Status</th>
-                                    <th className="text-right text-xs font-medium text-slate-400 uppercase px-5 py-3"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800">
-                                {filtered.map((tx) => (
-                                    <tr key={tx.id} className="hover:bg-slate-800/50 transition-colors">
-                                        <td className="px-5 py-3.5 text-sm font-medium text-white">{tx.invoice_number}</td>
-                                        <td className="px-5 py-3.5 text-sm text-slate-400 hidden sm:table-cell">{tx.customers?.name || '-'}</td>
-                                        <td className="px-5 py-3.5 text-sm text-slate-400 hidden sm:table-cell">{formatDateTime(tx.created_at)}</td>
-                                        <td className="px-5 py-3.5 hidden md:table-cell">
-                                            <Badge variant="info">{paymentMethodLabel(tx.payment_method)}</Badge>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-right text-sm font-semibold text-white">{formatRupiah(tx.total_amount)}</td>
-                                        <td className="px-5 py-3.5 text-right">
-                                            <Badge variant={tx.status === 'completed' ? 'success' : 'warning'}>
-                                                {tx.status === 'completed' ? 'Lunas' : 'Pending'}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-right">
-                                            <button onClick={() => viewDetail(tx)} className="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer">
-                                                <Eye size={16} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Invoice</TableHead>
+                                <TableHead className="hidden sm:table-cell">Pelanggan</TableHead>
+                                <TableHead className="hidden sm:table-cell">Tanggal</TableHead>
+                                <TableHead className="hidden md:table-cell">Pembayaran</TableHead>
+                                <TableHead align="right">Total</TableHead>
+                                <TableHead align="right">Status</TableHead>
+                                <TableHead align="right"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filtered.map((tx) => (
+                                <TableRow key={tx.id}>
+                                    <TableCell className="font-medium">{tx.invoice_number}</TableCell>
+                                    <TableCell className="hidden sm:table-cell text-[var(--text-secondary)]">{tx.customers?.name || '-'}</TableCell>
+                                    <TableCell className="hidden sm:table-cell text-[var(--text-secondary)]">{formatDateTime(tx.created_at)}</TableCell>
+                                    <TableCell className="hidden md:table-cell">
+                                        <Badge variant="info">{paymentMethodLabel(tx.payment_method)}</Badge>
+                                    </TableCell>
+                                    <TableCell align="right" className="font-semibold">{formatRupiah(tx.total_amount)}</TableCell>
+                                    <TableCell align="right">
+                                        <Badge variant={tx.status === 'completed' ? 'success' : 'warning'}>
+                                            {tx.status === 'completed' ? 'Lunas' : 'Pending'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <button onClick={() => viewDetail(tx)} className="p-2 rounded-lg bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+                                            <Eye size={16} />
+                                        </button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </Card>
             )}
 
@@ -182,31 +188,31 @@ export default function TransactionsPage() {
                 {detailModal && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div><p className="text-slate-500">Invoice</p><p className="text-white font-medium">{detailModal.invoice_number}</p></div>
-                            <div><p className="text-slate-500">Pelanggan</p><p className="text-white">{detailModal.customers?.name || '-'}</p></div>
-                            <div><p className="text-slate-500">Tanggal</p><p className="text-white">{formatDateTime(detailModal.created_at)}</p></div>
-                            <div><p className="text-slate-500">Pembayaran</p><p className="text-white">{paymentMethodLabel(detailModal.payment_method)}</p></div>
+                            <div><p className="text-[var(--text-muted)]">Invoice</p><p className="text-[var(--text-primary)] font-medium">{detailModal.invoice_number}</p></div>
+                            <div><p className="text-[var(--text-muted)]">Pelanggan</p><p className="text-[var(--text-primary)]">{detailModal.customers?.name || '-'}</p></div>
+                            <div><p className="text-[var(--text-muted)]">Tanggal</p><p className="text-[var(--text-primary)]">{formatDateTime(detailModal.created_at)}</p></div>
+                            <div><p className="text-[var(--text-muted)]">Pembayaran</p><p className="text-[var(--text-primary)]">{paymentMethodLabel(detailModal.payment_method)}</p></div>
                         </div>
 
-                        <div className="border-t border-slate-700 pt-4">
-                            <h4 className="text-sm font-medium text-slate-300 mb-3">Item Transaksi</h4>
+                        <div className="border-t border-[var(--surface-border)] pt-4">
+                            <h4 className="text-sm font-medium text-[var(--text-secondary)] mb-3">Item Transaksi</h4>
                             <div className="space-y-2">
                                 {detailItems.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
+                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--surface-0)] border border-[var(--surface-border)]">
                                         <div>
-                                            <p className="text-sm text-white">{item.product_name}</p>
-                                            <p className="text-xs text-slate-500">{formatRupiah(item.price)} x {item.quantity}</p>
+                                            <p className="text-sm text-[var(--text-primary)]">{item.product_name}</p>
+                                            <p className="text-xs text-[var(--text-muted)]">{formatRupiah(item.price)} x {item.quantity}</p>
                                         </div>
-                                        <p className="text-sm font-semibold text-white">{formatRupiah(item.subtotal)}</p>
+                                        <p className="text-sm font-semibold text-[var(--text-primary)]">{formatRupiah(item.subtotal)}</p>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-700 pt-3 space-y-3">
+                        <div className="border-t border-[var(--surface-border)] pt-4 space-y-4">
                             <div className="flex justify-between text-lg font-bold">
-                                <span className="text-slate-300">Total</span>
-                                <span className="text-white">{formatRupiah(detailModal.total_amount)}</span>
+                                <span className="text-[var(--text-secondary)]">Total</span>
+                                <span className="text-emerald-400">{formatRupiah(detailModal.total_amount)}</span>
                             </div>
                             <div className="flex gap-2">
                                 <Button

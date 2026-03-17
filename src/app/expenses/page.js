@@ -14,11 +14,12 @@ import {
 import { formatRupiah, formatDateTime } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import Table from '@/components/ui/Table';
+import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import Input, { Select } from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
+import PageHeader from '@/components/ui/PageHeader';
 import { useToast } from '@/components/ui/Toast';
 import dayjs from 'dayjs';
 
@@ -175,34 +176,29 @@ function ExpensesPage() {
     return (
         <div className="space-y-6 animate-fade-in relative z-10">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 gap-4 justify-between items-start sm:items-center relative overflow-hidden shadow-sm">
-
-                <div className="relative">
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                        <Wallet size={28} className="text-rose-400" />
-                        Pengeluaran
-                    </h1>
-                    <p className="text-slate-400 text-sm mt-1">Catat dan pantau pengeluaran operasional toko</p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto relative">
-                    <div className="relative w-full sm:w-auto">
-                        <Calendar size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                        <input
-                            type="month"
-                            value={month}
-                            onChange={(e) => setMonth(e.target.value)}
-                            className="w-full sm:w-auto bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-white outline-none focus:ring-1 focus:ring-rose-500/50 shadow-sm transition-all"
-                        />
+            <PageHeader
+                title="Pengeluaran"
+                description="Catat dan pantau pengeluaran operasional toko"
+                icon={<Wallet size={28} className="text-rose-400" />}
+                action={
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto relative">
+                        <div className="relative w-full sm:w-auto">
+                            <Input
+                                type="month"
+                                value={month}
+                                onChange={(e) => setMonth(e.target.value)}
+                                icon={Calendar}
+                            />
+                        </div>
+                        {isOwner && (
+                            <Button onClick={() => openModal()} className="relative w-full sm:w-auto justify-center">
+                                <Plus size={18} className="mr-2" />
+                                Tambah
+                            </Button>
+                        )}
                     </div>
-                    {isOwner && (
-                        <Button onClick={() => openModal()} className="relative w-full sm:w-auto">
-                            <Plus size={18} className="mr-2" />
-                            Tambah
-                        </Button>
-                    )}
-                </div>
-            </div>
+                }
+            />
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -211,8 +207,8 @@ function ExpensesPage() {
                         <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center mb-3 text-rose-400">
                             <Wallet size={20} />
                         </div>
-                        <p className="text-sm font-medium text-slate-400 mb-1">Total Pengeluaran Bulan Ini</p>
-                        <h3 className="text-3xl font-bold text-white tracking-tight">{formatRupiah(totalExpenses)}</h3>
+                        <p className="text-sm font-medium text-[var(--text-secondary)] mb-1">Total Pengeluaran Bulan Ini</p>
+                        <h3 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{formatRupiah(totalExpenses)}</h3>
                     </div>
                 </Card>
                 <Card className="overflow-hidden relative">
@@ -220,94 +216,89 @@ function ExpensesPage() {
                         <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center mb-3 text-indigo-400">
                             <Tag size={20} />
                         </div>
-                        <p className="text-sm font-medium text-slate-400 mb-1">Jumlah Transaksi</p>
-                        <h3 className="text-3xl font-bold text-white tracking-tight">{expenses.length}</h3>
+                        <p className="text-sm font-medium text-[var(--text-secondary)] mb-1">Jumlah Transaksi</p>
+                        <h3 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{expenses.length}</h3>
                     </div>
                 </Card>
             </div>
 
             {/* Actions & List */}
             <Card className="!p-0 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <Table className="min-w-[600px]">
-                        <thead>
-                            <tr className="bg-slate-900 border-b border-slate-800 text-left">
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Tanggal</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Keterangan</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider">Kategori</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Jumlah</th>
-                                {isOwner && <th className="px-6 py-4 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Aksi</th>}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800">
-                            {loading ? (
-                                [...Array(3)].map((_, i) => (
-                                    <tr key={i} className="animate-pulse">
-                                        <td className="px-6 py-4"><div className="h-4 bg-slate-800 rounded w-24"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-slate-800 rounded w-48"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-slate-800 rounded w-24"></div></td>
-                                        <td className="px-6 py-4"><div className="h-4 bg-slate-800 rounded w-32 ml-auto"></div></td>
-                                        {isOwner && <td className="px-6 py-4"><div className="h-8 bg-slate-800 rounded w-20 ml-auto"></div></td>}
-                                    </tr>
-                                ))
-                            ) : expenses.length === 0 ? (
-                                <tr>
-                                    <td colSpan={isOwner ? 5 : 4}>
-                                        <EmptyState
-                                            icon={Wallet}
-                                            title="Belum Ada Pengeluaran"
-                                            description={`Tidak ada catatan pengeluaran di bulan ${dayjs(month).format('MMMM YYYY')}.`}
-                                            action={isOwner ? <Button onClick={() => openModal()} variant="secondary" className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10">Tambah Pengeluaran</Button> : null}
-                                        />
-                                    </td>
-                                </tr>
-                            ) : (
-                                expenses.map((expense) => (
-                                    <tr
-                                        key={expense.id}
-                                        className="hover:bg-slate-800/50 transition-colors group"
-                                    >
-                                        <td className="px-6 py-4 text-sm text-slate-300 font-medium whitespace-nowrap">
-                                            {dayjs(expense.expense_date).format('DD MMM YYYY')}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="font-medium text-white">{expense.title}</div>
-                                            {expense.notes && (
-                                                <div className="text-xs text-slate-500 mt-1 truncate max-w-xs">{expense.notes}</div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <Badge variant="secondary" className="bg-slate-800 text-slate-300 border-slate-700">
-                                                {getCategoryLabel(expense.category)}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="font-bold text-rose-400">{formatRupiah(expense.amount)}</div>
-                                        </td>
-                                        {isOwner && (
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => openModal(expense)}
-                                                        className="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                                                    >
-                                                        <Edit2 size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setDeleteModal({ isOpen: true, id: expense.id })}
-                                                        className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </div>
-                                            </td>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Tanggal</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                            <TableHead>Kategori</TableHead>
+                            <TableHead align="right">Jumlah</TableHead>
+                            {isOwner && <TableHead align="right">Aksi</TableHead>}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {loading ? (
+                            [...Array(3)].map((_, i) => (
+                                <TableRow key={i} className="animate-pulse">
+                                    <TableCell><div className="h-4 bg-[var(--surface-border)] rounded w-24"></div></TableCell>
+                                    <TableCell><div className="h-4 bg-[var(--surface-border)] rounded w-48"></div></TableCell>
+                                    <TableCell><div className="h-4 bg-[var(--surface-border)] rounded w-24"></div></TableCell>
+                                    <TableCell align="right"><div className="h-4 bg-[var(--surface-border)] rounded w-32 ml-auto"></div></TableCell>
+                                    {isOwner && <TableCell align="right"><div className="h-8 bg-[var(--surface-border)] rounded w-20 ml-auto"></div></TableCell>}
+                                </TableRow>
+                            ))
+                        ) : expenses.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={isOwner ? 5 : 4}>
+                                    <EmptyState
+                                        icon={Wallet}
+                                        title="Belum Ada Pengeluaran"
+                                        description={`Tidak ada catatan pengeluaran di bulan ${dayjs(month).format('MMMM YYYY')}.`}
+                                        action={isOwner ? <Button onClick={() => openModal()} variant="secondary" className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10">Tambah Pengeluaran</Button> : null}
+                                    />
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            expenses.map((expense) => (
+                                <TableRow key={expense.id}>
+                                    <TableCell className="text-sm text-[var(--text-secondary)] font-medium whitespace-nowrap">
+                                        {dayjs(expense.expense_date).format('DD MMM YYYY')}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="font-medium text-[var(--text-primary)]">{expense.title}</div>
+                                        {expense.notes && (
+                                            <div className="text-xs text-[var(--text-muted)] mt-1 truncate max-w-xs">{expense.notes}</div>
                                         )}
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </Table>
-                </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary" className="bg-[var(--surface-2)] text-[var(--text-secondary)] border-[var(--surface-border)]">
+                                            {getCategoryLabel(expense.category)}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <div className="font-bold text-rose-400">{formatRupiah(expense.amount)}</div>
+                                    </TableCell>
+                                    {isOwner && (
+                                        <TableCell align="right">
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => openModal(expense)}
+                                                    className="p-2 text-[var(--text-secondary)] hover:text-indigo-400 hover:bg-[var(--surface-2)] rounded-lg transition-colors cursor-pointer"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteModal({ isOpen: true, id: expense.id })}
+                                                    className="p-2 text-[var(--text-secondary)] hover:text-rose-400 hover:bg-[var(--surface-2)] rounded-lg transition-colors cursor-pointer"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </TableCell>
+                                    )}
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             </Card>
 
             {/* Add/Edit Modal */}
@@ -315,8 +306,18 @@ function ExpensesPage() {
                 isOpen={modal.isOpen}
                 onClose={() => !saving && setModal({ isOpen: false, data: null })}
                 title={modal.data ? 'Edit Pengeluaran' : 'Catat Pengeluaran Baru'}
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
+                        <Button type="button" variant="secondary" onClick={() => setModal({ isOpen: false, data: null })} disabled={saving}>
+                            Batal
+                        </Button>
+                        <Button type="button" onClick={handleSave} loading={saving} icon={Save}>
+                            Simpan
+                        </Button>
+                    </div>
+                }
             >
-                <form onSubmit={handleSave} className="space-y-4">
+                <form id="expense-form" onSubmit={handleSave} className="space-y-4">
                     <Input
                         label="Judul/Keterangan Singkat"
                         placeholder="Contoh: Beli sabun cuci, Bayar listrik"
@@ -326,20 +327,15 @@ function ExpensesPage() {
                     />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="block text-sm font-medium text-slate-300">
-                                Kategori
-                            </label>
-                            <select
-                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 cursor-pointer shadow-sm appearance-none"
-                                value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                            >
-                                {EXPENSE_CATEGORIES.map(cat => (
-                                    <option key={cat.id} value={cat.id} className="bg-slate-800">{cat.label}</option>
-                                ))}
-                            </select>
-                        </div>
+                        <Select
+                            label="Kategori"
+                            value={formData.category}
+                            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        >
+                            {EXPENSE_CATEGORIES.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.label}</option>
+                            ))}
+                        </Select>
 
                         <Input
                             label="Tanggal"
@@ -370,23 +366,14 @@ function ExpensesPage() {
                     )}
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1.5">Catatan Tambahan (Opsional)</label>
+                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Catatan Tambahan (Opsional)</label>
                         <textarea
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder-slate-500 resize-none shadow-sm"
+                            className="w-full bg-[var(--surface-0)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder-[var(--text-muted)] resize-none shadow-sm"
                             placeholder="Detail pengeluaran..."
                             rows={3}
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                         />
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                        <Button type="button" variant="secondary" onClick={() => setModal({ isOpen: false, data: null })} disabled={saving}>
-                            Batal
-                        </Button>
-                        <Button type="submit" loading={saving} icon={Save}>
-                            Simpan
-                        </Button>
                     </div>
                 </form>
             </Modal>
@@ -397,12 +384,8 @@ function ExpensesPage() {
                 onClose={() => !saving && setDeleteModal({ isOpen: false, id: null })}
                 title="Hapus Pengeluaran"
                 size="sm"
-            >
-                <div>
-                    <p className="text-slate-400 mb-6 mt-2">
-                        Apakah Anda yakin ingin menghapus catatan pengeluaran ini? Laporan laba rugi mungkin akan terpengaruh.
-                    </p>
-                    <div className="flex justify-end gap-3">
+                footer={
+                    <div className="flex justify-end gap-3 w-full">
                         <Button variant="secondary" onClick={() => setDeleteModal({ isOpen: false, id: null })} disabled={saving}>
                             Batal
                         </Button>
@@ -410,6 +393,12 @@ function ExpensesPage() {
                             Ya, Hapus
                         </Button>
                     </div>
+                }
+            >
+                <div>
+                    <p className="text-[var(--text-secondary)] mb-6 mt-2">
+                        Apakah Anda yakin ingin menghapus catatan pengeluaran ini? Laporan laba rugi mungkin akan terpengaruh.
+                    </p>
                 </div>
             </Modal>
         </div>
