@@ -116,10 +116,10 @@ export default function Sidebar({ collapsed, onToggle }) {
                                             href={item.href}
                                             title={collapsed ? item.label : undefined}
                                             className={cn(
-                                                'group flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200 relative',
+                                                'group flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-200 relative',
                                                 isActive
-                                                    ? 'bg-indigo-500/10 text-indigo-400'
-                                                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)]'
+                                                    ? 'bg-[var(--surface-2)] text-[var(--text-primary)] font-semibold shadow-sm'
+                                                    : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)]'
                                             )}
                                         >
                                             {isActive && (

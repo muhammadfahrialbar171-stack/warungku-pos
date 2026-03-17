@@ -8,7 +8,7 @@ export default function Card({ children, className, hover = true, noPadding = fa
         <div
             className={cn(
                 'bg-[var(--surface-1)] border border-[var(--surface-border)] rounded-xl overflow-hidden',
-                !noPadding && 'p-5',
+                !noPadding && 'p-4 sm:p-5',
                 hover && 'transition-all duration-200 hover:border-[var(--text-muted)]/30 hover:shadow-[var(--shadow-sm)]',
                 className
             )}

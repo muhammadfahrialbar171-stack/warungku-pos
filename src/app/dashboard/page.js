@@ -108,7 +108,7 @@ function DashboardPage() {
               ? "QRIS"
               : tx.payment_method === "transfer"
                 ? "Transfer"
-                : tx.payment_method;
+                : tx.payment_method || "Lainnya";
         paymentMethodMap[method] =
           (paymentMethodMap[method] || 0) + tx.total_amount;
       });
@@ -523,12 +523,12 @@ function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Category */}
         <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Penjualan per Kategori</h3>
+          <div className="flex items-start justify-between mb-4 gap-3">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">Penjualan per Kategori</h3>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Bulan ini</p>
             </div>
-            <div className="p-2 bg-indigo-500/10 rounded-lg">
+            <div className="p-2 bg-indigo-500/10 rounded-lg flex-shrink-0">
               <PieChart className="text-indigo-400" size={16} />
             </div>
           </div>
@@ -543,12 +543,12 @@ function DashboardPage() {
 
         {/* Payment Method */}
         <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Metode Pembayaran</h3>
+          <div className="flex items-start justify-between mb-4 gap-3">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate">Metode Pembayaran</h3>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Bulan ini</p>
             </div>
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
+            <div className="p-2 bg-emerald-500/10 rounded-lg flex-shrink-0">
               <DollarSign className="text-emerald-400" size={16} />
             </div>
           </div>
@@ -566,9 +566,9 @@ function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top Products */}
         <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Produk Populer</h3>
-            <Badge variant="primary">Top 5</Badge>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate min-w-0">Produk Populer</h3>
+            <Badge variant="primary" className="flex-shrink-0">Top 5</Badge>
           </div>
           <div className="space-y-2">
             {topProducts.length === 0 ? (
@@ -601,11 +601,11 @@ function DashboardPage() {
 
         {/* Recent Transactions */}
         <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Transaksi Terakhir</h3>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] truncate min-w-0">Transaksi Terakhir</h3>
             <a
               href="/transactions"
-              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors font-medium"
+              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors font-medium flex-shrink-0 whitespace-nowrap"
             >
               Lihat semua <ArrowUpRight size={12} />
             </a>
