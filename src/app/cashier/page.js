@@ -40,7 +40,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 
 export default function CashierPage() {
     const { user, session } = useAuthStore();
-    const { items, addItem, removeItem, incrementItem, decrementItem, clearCart, getTotal, getTotalItems } = useCartStore();
+    const { items, addItem, removeItem, incrementItem, decrementItem, clearCart, setItems, getTotal, getTotalItems } = useCartStore();
     const toast = useToast();
 
     const [products, setProducts] = useState([]);
@@ -247,7 +247,7 @@ export default function CashierPage() {
 
     const recallBill = (bill) => {
         clearCart();
-        bill.items.forEach((item) => addItem(item));
+        setItems(bill.items);
         setSelectedCustomerId(bill.customerId || '');
         const updated = heldBills.filter((b) => b.id !== bill.id);
         saveHeldBills(updated);
@@ -721,8 +721,8 @@ export default function CashierPage() {
                 {/* Left: Product Grid */}
                 <div className="flex-1 p-4 md:p-6 overflow-y-auto">
                     {/* Search & Filter */}
-                    <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                        <div className="flex gap-2 flex-1">
+                    <div className="flex flex-col gap-3 mb-4">
+                        <div className="flex gap-2 w-full lg:max-w-md">
                             <div className="relative flex-1">
                                 <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                                 <input
@@ -743,7 +743,7 @@ export default function CashierPage() {
                                 <span className="hidden sm:inline">Scan</span>
                             </Button>
                         </div>
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hidden">
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                             <button
                                 onClick={() => setSelectedCategory('all')}
                                 className={cn(
