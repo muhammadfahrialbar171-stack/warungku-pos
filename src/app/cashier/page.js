@@ -442,7 +442,7 @@ export default function CashierPage() {
       setProducts(updatedProducts);
       saveProductsOffline(updatedProducts);
 
-      // --- Trigger Push Notification for Low Stock ---
+      // --- Trigger Notification for Low Stock (via Supabase Realtime) ---
       if (isOnline) {
         const lowStockItems = updatedProducts.filter(p => {
           const soldItem = items.find(item => item.id === p.id);
@@ -450,17 +450,16 @@ export default function CashierPage() {
         });
 
         if (lowStockItems.length > 0) {
-          const itemNames = lowStockItems.map(i => i.name).join(', ');
-          fetch('/api/push', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              storeId: storeId,
-              title: 'Peringatan Stok Menipis ⚠️',
-              message: `Stok menipis setelah penjualan: ${itemNames}. Segera restock!`,
-              url: '/stock'
-            })
-          }).catch(err => console.error('Failed to trigger push', err));
+          const itemNames = lowStockItems.map(i => `${i.name} (sisa ${i.stock})`).join(', ');
+          supabase.from('store_notifications').insert({
+            store_id: storeId,
+            title: 'Peringatan Stok Menipis ⚠️',
+            message: `Stok menipis setelah penjualan: ${itemNames}. Segera restock!`,
+            type: 'warning',
+            url: '/stock'
+          }).then(({ error }) => {
+            if (error) console.error('Failed to send notification:', error);
+          });
         }
       }
 

@@ -1,115 +1,217 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { Bell, BellOff } from 'lucide-react';
+import { Bell, BellOff, BellRing, X } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
-
-// You must replace this with your actual VAPID public key!
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-function urlB64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
 export default function PushNotificationManager() {
   const { user } = useAuthStore();
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [subscription, setSubscription] = useState(null);
-  const [registration, setRegistration] = useState(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showPanel, setShowPanel] = useState(false);
   const toast = useToast();
 
+  // Check current notification permission
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      // Tunggu Service Worker aktif (via next-pwa)
-      navigator.serviceWorker.ready.then((reg) => {
-        setRegistration(reg);
-        reg.pushManager.getSubscription().then((sub) => {
-          if (sub) {
-            setIsSubscribed(true);
-            setSubscription(sub);
-          }
-        });
-      });
+    if ('Notification' in window) {
+      setPermissionGranted(Notification.permission === 'granted');
     }
   }, []);
 
-  const subscribeToPush = async () => {
-    if (!registration) return;
-    try {
-      const sub = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
+  // Load unread notifications
+  const loadNotifications = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('store_notifications')
+      .select('*')
+      .eq('store_id', user.id)
+      .eq('is_read', false)
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-      setSubscription(sub);
-      setIsSubscribed(true);
-      
-      const subJSON = sub.toJSON();
+    if (data) {
+      setNotifications(data);
+      setUnreadCount(data.length);
+    }
+  }, [user]);
 
-      // Simpan ke Supabase
-      const { error } = await supabase.from('push_subscriptions').upsert({
-        user_id: user.id,
-        endpoint: subJSON.endpoint,
-        p256dh: subJSON.keys.p256dh,
-        auth: subJSON.keys.auth
-      }, { onConflict: 'user_id, endpoint' });
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
 
-      if (error) throw error;
-      
-      toast.success('Notifikasi berhasil diaktifkan!');
-    } catch (err) {
-      console.error('Failed to subscribe to push', err);
-      toast.error('Gagal mengaktifkan notifikasi: ' + err.message);
+  // Subscribe to Realtime for new notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase.channel('owner-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'store_notifications',
+        filter: `store_id=eq.${user.id}`
+      }, (payload) => {
+        const newNotif = payload.new;
+        setNotifications(prev => [newNotif, ...prev]);
+        setUnreadCount(prev => prev + 1);
+
+        // Show browser notification if permission granted
+        if (permissionGranted && 'Notification' in window) {
+          const notif = new Notification(newNotif.title, {
+            body: newNotif.message,
+            icon: '/icon-192x192.png',
+            badge: '/icon-192x192.png',
+            vibrate: [100, 50, 100],
+            tag: `notif-${newNotif.id}`,
+          });
+          notif.onclick = () => {
+            window.focus();
+            if (newNotif.url) window.location.href = newNotif.url;
+            notif.close();
+          };
+        }
+
+        // Also show in-app toast
+        if (newNotif.type === 'warning') {
+          toast.warning(newNotif.message);
+        } else {
+          toast.info(newNotif.message);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, permissionGranted, toast]);
+
+  const requestPermission = async () => {
+    if (!('Notification' in window)) {
+      toast.error('Browser tidak mendukung notifikasi');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setPermissionGranted(permission === 'granted');
+    if (permission === 'granted') {
+      toast.success('Notifikasi browser diaktifkan!');
+    } else {
+      toast.warning('Izin notifikasi ditolak oleh browser.');
     }
   };
 
-  const unsubscribeFromPush = async () => {
-    try {
-      if (subscription) {
-        await subscription.unsubscribe();
-        
-        // Hapus dari Supabase
-        await supabase.from('push_subscriptions')
-          .delete()
-          .eq('endpoint', subscription.endpoint)
-          .eq('user_id', user.id);
-          
-        setSubscription(null);
-        setIsSubscribed(false);
-        toast.info('Notifikasi dimatikan.');
-      }
-    } catch (err) {
-      console.error('Failed to unsubscribe', err);
-    }
+  const markAllRead = async () => {
+    if (notifications.length === 0) return;
+    const ids = notifications.map(n => n.id);
+    await supabase
+      .from('store_notifications')
+      .update({ is_read: true })
+      .in('id', ids);
+    setNotifications([]);
+    setUnreadCount(0);
+    setShowPanel(false);
   };
 
-  if (!user || user.role === 'cashier') return null; // Hanya owner
-  if (!VAPID_PUBLIC_KEY) return null; // Sembunyikan jika VAPID belum dikonfigurasi
+  // Only show for owner
+  if (!user || user.role === 'cashier') return null;
 
   return (
-    <button
-      onClick={isSubscribed ? unsubscribeFromPush : subscribeToPush}
-      className={`flex items-center justify-center p-2 rounded-xl border transition-all ${
-        isSubscribed 
-          ? 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20' 
-          : 'bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--surface-border)] hover:bg-[var(--surface-3)]'
-      }`}
-      title={isSubscribed ? "Matikan Notifikasi Web" : "Aktifkan Notifikasi Web"}
-    >
-      {isSubscribed ? <Bell size={18} /> : <BellOff size={18} />}
-    </button>
+    <div className="relative">
+      {/* Bell Button */}
+      <button
+        onClick={() => {
+          if (!permissionGranted) {
+            requestPermission();
+          } else {
+            setShowPanel(!showPanel);
+          }
+        }}
+        className={`relative flex items-center justify-center p-2 rounded-xl border transition-all ${
+          permissionGranted
+            ? 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20'
+            : 'bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--surface-border)] hover:bg-[var(--surface-3)]'
+        }`}
+        title={permissionGranted ? 'Lihat Notifikasi' : 'Aktifkan Notifikasi Browser'}
+      >
+        {unreadCount > 0 ? (
+          <BellRing size={18} className="animate-bounce" />
+        ) : permissionGranted ? (
+          <Bell size={18} />
+        ) : (
+          <BellOff size={18} />
+        )}
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-[10px] font-black text-white rounded-full flex items-center justify-center px-1 shadow-lg border-2 border-[var(--surface-1)]">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {/* Notification Panel */}
+      {showPanel && (
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-40" onClick={() => setShowPanel(false)} />
+
+          {/* Panel */}
+          <div className="absolute right-0 top-12 w-80 sm:w-96 max-h-96 bg-[var(--surface-1)] border border-[var(--surface-border)] rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--surface-border)]">
+              <h3 className="text-sm font-bold text-[var(--text-primary)]">Notifikasi</h3>
+              <div className="flex items-center gap-2">
+                {notifications.length > 0 && (
+                  <button
+                    onClick={markAllRead}
+                    className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors"
+                  >
+                    Tandai semua dibaca
+                  </button>
+                )}
+                <button onClick={() => setShowPanel(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Notification List */}
+            <div className="overflow-y-auto max-h-72 custom-scrollbar">
+              {notifications.length === 0 ? (
+                <div className="py-10 text-center">
+                  <Bell size={24} className="mx-auto text-[var(--text-muted)]/30 mb-2" />
+                  <p className="text-[12px] text-[var(--text-muted)]">Tidak ada notifikasi baru</p>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className="px-4 py-3 border-b border-[var(--surface-border)]/50 hover:bg-[var(--surface-2)]/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      if (n.url) window.location.href = n.url;
+                      setShowPanel(false);
+                    }}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                        n.type === 'warning' ? 'bg-amber-500' :
+                        n.type === 'error' ? 'bg-red-500' :
+                        n.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'
+                      }`} />
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-bold text-[var(--text-primary)] leading-tight">{n.title}</p>
+                        <p className="text-[11px] text-[var(--text-muted)] mt-0.5 line-clamp-2">{n.message}</p>
+                        <p className="text-[10px] text-[var(--text-muted)]/60 mt-1">
+                          {new Date(n.created_at).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
