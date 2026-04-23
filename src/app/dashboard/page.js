@@ -27,40 +27,17 @@ import { useAuthStore } from "@/store/authStore";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { formatRupiah, formatRupiahShort, formatDate } from "@/lib/utils";
 import dayjs from "dayjs";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Filler,
-  Tooltip,
-  ArcElement,
-  PieController,
-  DoughnutController,
-  Legend,
-  BarController,
-  LineController,
-} from "chart.js";
-import { Line, Doughnut, Bar, Chart } from "react-chartjs-2";
+import dynamic from 'next/dynamic';
 import { calculateStockForecasting, calculatePeakHour } from "@/lib/analytics";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  BarController,
-  LineController,
-  Filler,
-  Tooltip,
-  ArcElement,
-  PieController,
-  DoughnutController,
-  Legend,
-);
+const DashboardChart = dynamic(() => import('@/components/dashboard/LazyChart').then(mod => mod.DashboardChart), { 
+  ssr: false, 
+  loading: () => <div className="skeleton w-full h-full rounded-xl" /> 
+});
+const DashboardDoughnut = dynamic(() => import('@/components/dashboard/LazyChart').then(mod => mod.DashboardDoughnut), { 
+  ssr: false, 
+  loading: () => <div className="skeleton w-full h-full rounded-full" /> 
+});
 
 const EXPENSE_CATEGORIES = [
   { id: 'bahan_baku', label: 'Bahan Baku & Stok' },
@@ -745,7 +722,7 @@ function DashboardPage() {
           </div>
         </div>
         <div className="h-64">
-          <Chart type="bar" data={chartData} options={chartOptions} />
+          <DashboardChart data={chartData} options={chartOptions} />
         </div>
       </Card>
 
@@ -759,7 +736,7 @@ function DashboardPage() {
           </div>
           <div className="h-48 flex justify-center items-center">
             {categoryData.labels.length > 0 ? (
-              <Doughnut data={categoryDataConfig} options={doughnutOptions} />
+              <DashboardDoughnut data={categoryDataConfig} options={doughnutOptions} />
             ) : (
               <EmptyState compact icon={PieChart} title="Belum Ada Data" description="Belum ada transaksi kategori" />
             )}
@@ -774,7 +751,7 @@ function DashboardPage() {
           </div>
           <div className="h-48 flex justify-center items-center">
             {expenseData.labels.length > 0 ? (
-              <Doughnut data={expenseDataConfig} options={doughnutOptions} />
+              <DashboardDoughnut data={expenseDataConfig} options={doughnutOptions} />
             ) : (
               <EmptyState compact icon={Package} title="Belum Ada Data" description="Belum ada catatan biaya" />
             )}
