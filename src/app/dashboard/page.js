@@ -988,7 +988,7 @@ function DashboardPage() {
           </div>
           <div className="h-48 flex justify-center items-center">
             {topProducts.length > 0 ? (
-              <Doughnut 
+              <DashboardDoughnut 
                 data={{
                   labels: topProducts.map(p => p.name),
                   datasets: [{
