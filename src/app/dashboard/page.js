@@ -413,6 +413,25 @@ function DashboardPage() {
     loadDashboard(true);
   }, [loadDashboard]);
 
+  // ===== Realtime Subscription =====
+  useEffect(() => {
+    if (!user) return;
+    const storeId = user.owner_id || user.id;
+
+    const channel = supabase.channel('dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${storeId}` }, () => {
+          handleRefresh();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `user_id=eq.${storeId}` }, () => {
+          handleRefresh();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, handleRefresh]);
+
   // Yesterday comparison
   const yesterdaySales =
     weeklyData.length >= 2 ? weeklyData[weeklyData.length - 2].amount : 0;
