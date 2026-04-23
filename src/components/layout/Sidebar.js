@@ -11,19 +11,21 @@ import {
     BarChart3,
     LogOut,
     ChevronLeft,
-    Store,
     Settings,
     Users,
     Wallet,
     Barcode,
     Clock,
+    BrainCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
+import { getOfflineTransactionsQueue } from '@/lib/indexedDB';
+import { useState, useEffect } from 'react';
 
 const navSections = [
     {
-        label: 'Menu Utama',
+        label: 'Utama',
         items: [
             { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { href: '/cashier', label: 'Kasir', icon: ShoppingCart },
@@ -34,6 +36,7 @@ const navSections = [
         items: [
             { href: '/products', label: 'Produk', icon: Package, ownerOnly: true },
             { href: '/stock', label: 'Stok', icon: Boxes, ownerOnly: true },
+            { href: '/forecast', label: 'AI Forecast', icon: BrainCog, ownerOnly: true },
             { href: '/customers', label: 'Pelanggan', icon: Users },
             { href: '/barcode', label: 'Barcode', icon: Barcode, ownerOnly: true },
         ],
@@ -48,9 +51,9 @@ const navSections = [
         ],
     },
     {
-        label: 'Lainnya',
+        label: 'Sistem',
         items: [
-            { href: '/settings', label: 'Pengaturan', icon: Settings },
+            { href: '/settings', label: 'Pengaturan', icon: Settings, ownerOnly: true },
         ],
     },
 ];
@@ -59,6 +62,17 @@ export default function Sidebar({ collapsed, onToggle }) {
     const pathname = usePathname();
     const { user, logout } = useAuthStore();
     const isOwner = !user?.role || user?.role === 'owner';
+    const [offlineCount, setOfflineCount] = useState(0);
+
+    useEffect(() => {
+        const checkQueue = async () => {
+            const queue = await getOfflineTransactionsQueue();
+            setOfflineCount(queue.length);
+        };
+        checkQueue();
+        const interval = setInterval(checkQueue, 5000); // Check every 5s
+        return () => clearInterval(interval);
+    }, []);
 
     const filterItems = (items) =>
         items.filter(item => {
@@ -67,29 +81,34 @@ export default function Sidebar({ collapsed, onToggle }) {
             return true;
         });
 
+    const initials = (user?.store_name || user?.full_name || 'W')[0].toUpperCase();
+
     return (
         <aside
             className={cn(
-                'fixed left-0 top-0 h-full z-40 transition-all duration-300 hidden md:flex flex-col',
-                'bg-[var(--surface-1)] border-r border-[var(--surface-border)]',
-                collapsed ? 'w-[72px]' : 'w-64'
+                'h-full transition-all duration-300 hidden md:flex flex-col flex-shrink-0 select-none bg-[var(--surface-1)] border-r border-[var(--surface-border)]',
+                collapsed ? 'w-[72px]' : 'w-60'
             )}
         >
             {/* Logo */}
-            <div className="h-16 flex items-center gap-3 px-5 border-b border-[var(--surface-border)] flex-shrink-0">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-indigo-500/20">
-                    <Store size={18} className="text-white" />
+            <div className="h-14 flex items-center gap-3 px-5 border-b border-[var(--surface-border)] flex-shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)] border border-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {user?.logo_url ? (
+                        <img src={user.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                    ) : (
+                        <span className="text-white text-xs font-bold w-full h-full flex items-center justify-center">{initials}</span>
+                    )}
                 </div>
                 {!collapsed && (
                     <div className="animate-fade-in overflow-hidden">
-                        <h1 className="font-bold text-[var(--text-primary)] text-[15px] leading-tight tracking-tight">WarungKu</h1>
-                        <p className="text-[10px] text-[var(--text-muted)] font-medium tracking-wide uppercase">POS System</p>
+                        <h1 className="font-semibold text-[var(--text-primary)] text-[14px] leading-tight tracking-tight">WarungKu</h1>
+                        <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Point of Sale</p>
                     </div>
                 )}
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 py-3 px-3 overflow-y-auto space-y-4">
+            <nav className="flex-1 min-h-0 py-4 px-3 overflow-y-auto space-y-5">
                 {navSections.map((section, sIdx) => {
                     const filteredItems = filterItems(section.items);
                     if (filteredItems.length === 0) return null;
@@ -98,12 +117,12 @@ export default function Sidebar({ collapsed, onToggle }) {
                         <div key={sIdx}>
                             {/* Section Label */}
                             {!collapsed && (
-                                <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                                <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
                                     {section.label}
                                 </p>
                             )}
                             {collapsed && sIdx > 0 && (
-                                <div className="mx-3 mb-2 border-t border-[var(--surface-border)]" />
+                                <div className="mx-3 mb-3 border-t border-[var(--surface-border)]" />
                             )}
 
                             {/* Nav Items */}
@@ -116,23 +135,37 @@ export default function Sidebar({ collapsed, onToggle }) {
                                             href={item.href}
                                             title={collapsed ? item.label : undefined}
                                             className={cn(
-                                                'group flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-200 relative',
+                                                'group flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] transition-all duration-150 relative',
                                                 isActive
-                                                    ? 'bg-[var(--surface-2)] text-[var(--text-primary)] font-semibold shadow-sm'
-                                                    : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)]'
+                                                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-semibold'
+                                                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)]'
                                             )}
                                         >
-                                            {isActive && (
-                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-indigo-500 rounded-r-full" />
-                                            )}
+                                            {/* Icon */}
                                             <item.icon
                                                 size={18}
-                                                className={cn(
-                                                    'flex-shrink-0 transition-colors',
-                                                    isActive ? 'text-indigo-400' : 'text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
-                                                )}
+                                                strokeWidth={isActive ? 2.2 : 1.8}
+                                                className="flex-shrink-0 transition-colors duration-150"
                                             />
-                                            {!collapsed && <span>{item.label}</span>}
+
+                                            {/* Label */}
+                                            {!collapsed && (
+                                                <div className="flex-1 flex items-center justify-between min-w-0">
+                                                    <span className="truncate">{item.label}</span>
+                                                    {item.href === '/transactions' && offlineCount > 0 && (
+                                                        <span className="flex-shrink-0 ml-2 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-black animate-pulse shadow-sm">
+                                                            {offlineCount}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Tooltip for collapsed */}
+                                            {collapsed && (
+                                                <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-[var(--surface-2)] text-[var(--text-primary)] text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity shadow-lg border border-[var(--surface-border)] z-50">
+                                                    {item.label}
+                                                </span>
+                                            )}
                                         </Link>
                                     );
                                 })}
@@ -144,38 +177,63 @@ export default function Sidebar({ collapsed, onToggle }) {
 
             {/* Bottom section */}
             <div className="p-3 border-t border-[var(--surface-border)] space-y-1 flex-shrink-0">
+                {/* User Profile Card */}
                 {!collapsed && user && (
-                    <div className="px-3 py-2.5 mb-1 animate-fade-in">
+                    <div className="mb-2 px-3 py-2.5 rounded-lg bg-[var(--surface-2)]/50 animate-fade-in">
                         <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/20 to-violet-500/20 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                                <span className="text-xs font-bold text-indigo-400">
-                                    {(user.store_name || 'T')[0].toUpperCase()}
-                                </span>
+                            <div className="w-8 h-8 rounded-full bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                {user?.logo_url ? (
+                                    <img src={user.logo_url} alt="Logo" className="w-full h-full object-contain p-1" />
+                                ) : (
+                                    <span className="text-sm font-semibold text-[var(--color-primary)]">{initials}</span>
+                                )}
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-semibold text-[var(--text-primary)] truncate">{user.store_name || 'Toko Saya'}</p>
-                                <p className="text-[11px] text-[var(--text-muted)] truncate">{user.email}</p>
+                                <p className="text-[12px] font-semibold text-[var(--text-primary)] truncate leading-tight">
+                                    {user.store_name || 'WarungKu'}
+                                </p>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                                    {isOwner ? 'Owner' : 'Kasir'}
+                                </p>
                             </div>
                         </div>
                     </div>
                 )}
 
+                {/* Collapsed avatar */}
+                {collapsed && user && (
+                    <div className="flex justify-center mb-2 px-2">
+                        <div className="w-9 h-9 rounded-full bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 flex items-center justify-center cursor-pointer overflow-hidden">
+                            {user?.logo_url ? (
+                                <img src={user.logo_url} alt="Logo" className="w-full h-full object-contain p-1" />
+                            ) : (
+                                <span className="text-sm font-semibold text-[var(--color-primary)]">{initials}</span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Logout */}
                 <button
                     onClick={logout}
                     className={cn(
-                        'flex items-center gap-3 w-full px-3 py-2 rounded-lg text-[13px] font-medium text-[var(--text-secondary)] hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer',
+                        'flex items-center gap-3 w-full px-3 py-2 rounded-lg text-[13px] text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/5 transition-colors cursor-pointer',
+                        collapsed && 'justify-center'
                     )}
+                    title={collapsed ? 'Keluar' : undefined}
                 >
-                    <LogOut size={18} className="flex-shrink-0" />
+                    <LogOut size={17} className="flex-shrink-0" />
                     {!collapsed && <span>Keluar</span>}
                 </button>
 
+                {/* Collapse toggle */}
                 <button
                     onClick={onToggle}
                     className="flex items-center justify-center w-full p-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
+                    title={collapsed ? 'Perluas' : 'Ciutkan'}
                 >
                     <ChevronLeft
-                        size={16}
+                        size={15}
                         className={cn('transition-transform duration-300', collapsed && 'rotate-180')}
                     />
                 </button>

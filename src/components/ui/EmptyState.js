@@ -13,27 +13,27 @@ export default function EmptyState({
 }) {
     return (
         <div className={cn(
-            'flex flex-col items-center justify-center text-center rounded-xl',
+            'flex flex-col items-center justify-center text-center rounded-lg',
             compact
-                ? 'p-6'
-                : 'p-8 lg:p-12 border-dashed border border-[var(--surface-border)] bg-[var(--surface-1)]/50',
+                ? 'py-6 px-4'
+                : 'py-10 px-6',
             className
         )}>
             <div className={cn(
-                'rounded-xl flex items-center justify-center mb-3',
-                compact ? 'w-10 h-10 bg-[var(--surface-2)]' : 'w-12 h-12 bg-[var(--surface-2)] ring-1 ring-[var(--surface-border)]'
+                'rounded-lg flex items-center justify-center mb-3 bg-[var(--surface-2)]',
+                compact ? 'w-9 h-9' : 'w-11 h-11'
             )}>
-                <Icon size={compact ? 20 : 24} className="text-[var(--text-muted)]" />
+                <Icon size={compact ? 18 : 22} className="text-[var(--text-muted)]" />
             </div>
             <h3 className={cn(
-                'font-semibold text-[var(--text-primary)] tracking-tight mb-1',
+                'font-medium text-[var(--text-primary)] mb-0.5',
                 compact ? 'text-xs' : 'text-sm'
             )}>
                 {title}
             </h3>
             <p className={cn(
                 'text-[var(--text-muted)] max-w-xs leading-relaxed',
-                compact ? 'text-[11px] mb-3' : 'text-xs mb-5'
+                compact ? 'text-[11px] mb-3' : 'text-xs mb-4'
             )}>
                 {description}
             </p>

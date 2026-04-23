@@ -33,7 +33,7 @@ export default function Error({ error, reset }) {
                     </button>
                     <button
                         onClick={() => reset()}
-                        className="px-5 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-indigo-500/25"
+                        className="px-5 py-2.5 rounded-xl bg-blue-500 text-white text-sm font-medium hover:bg-blue-600 transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-blue-500/25"
                     >
                         <RefreshCw size={16} />
                         Coba Lagi

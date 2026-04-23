@@ -21,6 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatDate, cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
+import { logActivity } from '@/lib/audit';
 
 import { withRBAC } from '@/components/layout/withRBAC';
 
@@ -41,16 +42,26 @@ function StockPage() {
     const loadData = useCallback(async () => {
         if (!user) return;
         setLoading(true);
+
+        // Safety timeout: Ensure loading spinner disappears after 8s even if DB hangs
+        const safetyTimeout = setTimeout(() => {
+            setLoading(false);
+        }, 8000);
+
         try {
+            // Use storeId so cashier sees data from their owner's store
+            const storeId = user.owner_id || user.id;
+
             const [{ data: prods }, { data: history }] = await Promise.all([
-                supabase.from('products').select('*').eq('user_id', user.id).eq('is_active', true).order('name'),
-                supabase.from('stock_history').select('*, products(name)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
+                supabase.from('products').select('*').eq('user_id', storeId).eq('is_active', true).order('name'),
+                supabase.from('stock_history').select('*, products(name)').eq('user_id', storeId).order('created_at', { ascending: false }).limit(50),
             ]);
             setProducts(prods || []);
             setStockHistory(history || []);
         } catch (err) {
             console.error(err);
         } finally {
+            clearTimeout(safetyTimeout);
             setLoading(false);
         }
     }, [user]);
@@ -81,19 +92,25 @@ function StockPage() {
             const newStock = form.type === 'in' ? product.stock + qty : product.stock - qty;
             if (newStock < 0) { toast.warning(`Stok tidak cukup! Stok saat ini: ${product.stock}`); setSaving(false); return; }
 
-            await supabase.from('products').update({ stock: newStock, updated_at: new Date().toISOString() }).eq('id', product.id);
+            // 1. Update Product Stock
+            const { error: updateError } = await supabase
+                .from('products')
+                .update({ stock: newStock, updated_at: new Date().toISOString() })
+                .eq('id', product.id);
 
-            // Build notes string with supplier info
+            if (updateError) throw new Error(`Gagal update stok produk: ${updateError.message}`);
+
+            // 2. Prepare History Entry
             const noteParts = [
                 form.notes || (form.type === 'in' ? 'Stok masuk' : 'Stok keluar'),
                 form.supplier_name ? `Supplier: ${form.supplier_name}` : '',
                 form.purchase_price ? `Harga beli: Rp${parseInt(form.purchase_price).toLocaleString('id-ID')}/unit` : '',
             ].filter(Boolean).join(' | ');
 
-            // Build stock history entry
+            const storeId = user.owner_id || user.id;
             const historyEntry = {
                 product_id: product.id,
-                user_id: user.id,
+                user_id: storeId,
                 type: form.type === 'in' ? 'adjustment_in' : 'adjustment_out',
                 quantity: form.type === 'in' ? qty : -qty,
                 stock_before: product.stock,
@@ -101,29 +118,40 @@ function StockPage() {
                 notes: noteParts,
             };
 
-            // Try saving with supplier columns, fallback to notes-only
-            try {
-                const fullEntry = { ...historyEntry };
-                if (form.supplier_name) fullEntry.supplier_name = form.supplier_name;
-                if (form.purchase_price) fullEntry.purchase_price = parseInt(form.purchase_price);
-                await supabase.from('stock_history').insert(fullEntry);
-            } catch (insertErr) {
-                // If columns don't exist, save without them
-                if (insertErr.message?.includes('column') || insertErr.code === '42703') {
-                    console.warn('Supplier columns not in DB, saving supplier info in notes only');
-                    await supabase.from('stock_history').insert(historyEntry);
+            // 3. Insert History with Fallback Logic
+            const fullEntry = { ...historyEntry };
+            if (form.supplier_name) fullEntry.supplier_name = form.supplier_name;
+            if (form.purchase_price) fullEntry.purchase_price = parseInt(form.purchase_price);
+            
+            const { error: insertError } = await supabase.from('stock_history').insert(fullEntry);
+
+            if (insertError) {
+                // FALLBACK: If error is due to missing columns (supplier_name/purchase_price)
+                if (insertError.message?.includes('column') || insertError.code === '42703') {
+                    console.warn('Fallback: Saving history without supplier columns');
+                    const { error: fallbackError } = await supabase.from('stock_history').insert(historyEntry);
+                    if (fallbackError) throw new Error(`Gagal simpan riwayat (fallback): ${fallbackError.message}`);
                 } else {
-                    throw insertErr;
+                    throw new Error(`Gagal simpan riwayat: ${insertError.message}`);
                 }
             }
 
+            // Success Completion
             setForm({ product_id: '', type: 'in', quantity: '', notes: '', supplier_name: '', purchase_price: '' });
             setAdjustModal(false);
             loadData();
-            toast.success('Stok berhasil disesuaikan!');
+            toast.success('Stok dan riwayat berhasil diperbarui!');
+            
+            logActivity('MANUAL_STOCK_UPDATE', {
+                product_id: product.id,
+                product_name: product.name,
+                type: form.type,
+                quantity: qty,
+                notes: form.notes
+            }, user.id);
         } catch (err) {
             console.error('Stock adjustment error:', err);
-            toast.error('Gagal update stok: ' + (err.message || 'Terjadi kesalahan'));
+            toast.error(err.message || 'Terjadi kesalahan sistem');
         } finally {
             setSaving(false);
         }
@@ -192,7 +220,7 @@ function StockPage() {
                                     {entry.quantity > 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-indigo-400 transition-colors">{entry.products?.name}</p>
+                                    <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-blue-400 transition-colors">{entry.products?.name}</p>
                                     <p className="text-xs text-[var(--text-muted)] mt-0.5">{entry.notes}</p>
                                 </div>
                                 <div className="text-right">
@@ -212,36 +240,83 @@ function StockPage() {
             <Modal
                 isOpen={adjustModal}
                 onClose={() => setAdjustModal(false)}
-                title="Sesuaikan Stok"
+                title="Sesuaikan Stok Produk"
                 size="md"
-                footer={
-                    <div className="flex justify-end gap-3 w-full">
-                        <Button variant="secondary" onClick={() => setAdjustModal(false)}>Batal</Button>
-                        <Button onClick={handleAdjust} loading={saving}>Simpan</Button>
-                    </div>
-                }
             >
-                <div className="space-y-4">
-                    <Select label="Produk *" value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })}>
-                        <option value="">Pilih produk</option>
+                <div className="space-y-3.5 pt-0.5">
+                    {/* Main Product Selection */}
+                    <Select 
+                        label="Produk yang Disesuaikan *" 
+                        value={form.product_id} 
+                        onChange={(e) => setForm({ ...form, product_id: e.target.value })}
+                        className="bg-[var(--surface-2)]/30"
+                    >
+                        <option value="">Pilih produk...</option>
                         {products.map((p) => (
                             <option key={p.id} value={p.id}>{p.name} (Stok: {p.stock})</option>
                         ))}
                     </Select>
-                    <div className="grid grid-cols-2 gap-4">
-                        <Select label="Tipe" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                            <option value="in">Stok Masuk</option>
-                            <option value="out">Stok Keluar</option>
+
+                    {/* Type & Quantity Grid */}
+                    <div className="grid grid-cols-2 gap-3.5">
+                        <Select label="Tipe Penyesuaian" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                            <option value="in">Stok Masuk (+)</option>
+                            <option value="out">Stok Keluar (-)</option>
                         </Select>
-                        <Input label="Jumlah *" type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="0" min="1" />
+                        <Input 
+                            label="Jumlah Unit *" 
+                            type="number" 
+                            value={form.quantity} 
+                            onChange={(e) => setForm({ ...form, quantity: e.target.value })} 
+                            placeholder="0" 
+                            min="1" 
+                        />
                     </div>
-                    <Textarea label="Catatan" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Alasan perubahan stok..." />
+
+                    {/* Dynamic Supplier Info - Ultra Compact */}
                     {form.type === 'in' && (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-2 gap-3.5 p-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 animate-in fade-in slide-in-from-top-2 duration-300">
                             <Input label="Nama Supplier" value={form.supplier_name} onChange={(e) => setForm({ ...form, supplier_name: e.target.value })} placeholder="Opsional" />
-                            <Input label="Harga Beli/Unit" type="number" value={form.purchase_price} onChange={(e) => setForm({ ...form, purchase_price: e.target.value })} placeholder="0" />
+                            <Input 
+                                label="Harga Beli/Unit" 
+                                type="number" 
+                                value={form.purchase_price} 
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '' || Number(val) >= 0) setForm({ ...form, purchase_price: val });
+                                }} 
+                                placeholder="0" 
+                                min="0"
+                            />
                         </div>
                     )}
+
+                    {/* Optimized Catatan */}
+                    <Textarea 
+                        label="Catatan / Alasan" 
+                        value={form.notes} 
+                        onChange={(e) => setForm({ ...form, notes: e.target.value })} 
+                        placeholder="Contoh: Barang rusak, Retur supplier, Opname stok..." 
+                        rows={2}
+                    />
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 pt-2">
+                        <Button 
+                            variant="secondary" 
+                            className="flex-1 rounded-2xl py-2.5" 
+                            onClick={() => setAdjustModal(false)}
+                        >
+                            Batal
+                        </Button>
+                        <Button 
+                            className="flex-[1.5] rounded-2xl py-2.5" 
+                            onClick={handleAdjust} 
+                            loading={saving}
+                        >
+                            Simpan Perubahan
+                        </Button>
+                    </div>
                 </div>
             </Modal>
         </div>

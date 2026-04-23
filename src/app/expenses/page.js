@@ -10,8 +10,10 @@ import {
     Trash2,
     Save,
     Tag,
+    Download,
 } from 'lucide-react';
 import { formatRupiah, formatDateTime } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
@@ -34,6 +36,7 @@ const EXPENSE_CATEGORIES = [
 ];
 
 import { withRBAC } from '@/components/layout/withRBAC';
+import { exportExpensesToExcel } from '@/lib/export';
 
 function ExpensesPage() {
     const { user, session } = useAuthStore();
@@ -57,23 +60,40 @@ function ExpensesPage() {
     const isOwner = !user?.role || user?.role === 'owner';
 
     const loadExpenses = useCallback(async () => {
-        if (!session) return;
+        if (!session || !user) return;
+        setLoading(true);
+
+        // Safety timeout: Ensure loading spinner disappears after 8s even if DB hangs
+        const safetyTimeout = setTimeout(() => {
+            setLoading(false);
+        }, 8000);
+
         try {
-            setLoading(true);
-            const res = await fetch(`/api/expenses?month=${month}`, {
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                },
-            });
-            if (!res.ok) throw new Error('Gagal mengambil data pengeluaran');
-            const data = await res.json();
-            setExpenses(data);
+            
+            // Get effective owner ID
+            const ownerId = user?.owner_id || user?.id;
+
+            const startOfMonth = dayjs(month).startOf('month').format('YYYY-MM-DD');
+            const endOfMonth = dayjs(month).endOf('month').format('YYYY-MM-DD');
+
+            const { data, error } = await supabase
+                .from('expenses')
+                .select('*')
+                .eq('user_id', ownerId)
+                .gte('expense_date', startOfMonth)
+                .lte('expense_date', endOfMonth)
+                .order('expense_date', { ascending: false });
+
+            if (error) throw error;
+            setExpenses(data || []);
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error loading expenses:', error);
+            toast.error('Gagal mengambil data pengeluaran');
         } finally {
+            clearTimeout(safetyTimeout);
             setLoading(false);
         }
-    }, [session, month]);
+    }, [session, user, month, toast]);
 
     useEffect(() => {
         loadExpenses();
@@ -106,41 +126,46 @@ function ExpensesPage() {
 
     const handleSave = async (e) => {
         e.preventDefault();
+        if (!user) return;
         setSaving(true);
         try {
             const isEdit = !!modal.data;
-            const url = isEdit ? `/api/expenses/${modal.data.id}` : '/api/expenses';
-            const method = isEdit ? 'PUT' : 'POST';
-
-            // Clean amount input (remove formatting if any)
-            const cleanAmount = parseInt(formData.amount.replace(/\D/g, ''), 10);
+            const cleanAmount = parseInt(formData.amount.toString().replace(/\D/g, ''), 10);
 
             if (isNaN(cleanAmount) || cleanAmount <= 0) {
                 throw new Error('Jumlah pengeluaran tidak valid');
             }
 
-            const res = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({
-                    ...formData,
-                    amount: cleanAmount,
-                }),
-            });
+            // Get effective owner ID
+            const ownerId = user?.owner_id || user?.id;
 
-            if (!res.ok) {
-                const errData = await res.json().catch(() => null);
-                throw new Error(errData?.error || 'Gagal menyimpan pengeluaran');
+            const payload = {
+                ...formData,
+                amount: cleanAmount,
+                user_id: ownerId,
+            };
+
+            let result;
+            if (isEdit) {
+                result = await supabase
+                    .from('expenses')
+                    .update(payload)
+                    .eq('id', modal.data.id)
+                    .eq('user_id', ownerId);
+            } else {
+                result = await supabase
+                    .from('expenses')
+                    .insert(payload);
             }
+
+            if (result.error) throw result.error;
 
             setModal({ isOpen: false, data: null });
             loadExpenses();
-            toast.success(modal.data ? 'Pengeluaran berhasil diperbarui!' : 'Pengeluaran berhasil dicatat!');
+            toast.success(isEdit ? 'Pengeluaran berhasil diperbarui!' : 'Pengeluaran berhasil dicatat!');
         } catch (error) {
-            toast.error(error.message);
+            console.error('Save error:', error);
+            toast.error(error.message || 'Gagal menyimpan pengeluaran');
         } finally {
             setSaving(false);
         }
@@ -149,18 +174,19 @@ function ExpensesPage() {
     const handleDelete = async () => {
         setSaving(true);
         try {
-            const res = await fetch(`/api/expenses/${deleteModal.id}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                },
-            });
-            if (!res.ok) throw new Error('Gagal menghapus pengeluaran');
+            const { error } = await supabase
+                .from('expenses')
+                .delete()
+                .eq('id', deleteModal.id);
+
+            if (error) throw error;
+            
             setDeleteModal({ isOpen: false, id: null });
             loadExpenses();
             toast.success('Pengeluaran berhasil dihapus.');
         } catch (error) {
-            toast.error(error.message);
+            console.error('Delete error:', error);
+            toast.error(error.message || 'Gagal menghapus pengeluaran');
         } finally {
             setSaving(false);
         }
@@ -190,6 +216,13 @@ function ExpensesPage() {
                                 icon={Calendar}
                             />
                         </div>
+                        <Button
+                            variant="secondary"
+                            onClick={() => exportExpensesToExcel(expenses, `Laporan_Pengeluaran_${month}`)}
+                            icon={Download}
+                            className="w-full sm:w-auto"
+                            disabled={expenses.length === 0}
+                        />
                         {isOwner && (
                             <Button onClick={() => openModal()} className="relative w-full sm:w-auto justify-center">
                                 <Plus size={18} className="mr-2" />
@@ -213,11 +246,22 @@ function ExpensesPage() {
                 </Card>
                 <Card className="overflow-hidden relative">
                     <div className="relative">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center mb-3 text-indigo-400">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center mb-3 text-blue-400">
                             <Tag size={20} />
                         </div>
                         <p className="text-sm font-medium text-[var(--text-secondary)] mb-1">Jumlah Transaksi</p>
                         <h3 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{expenses.length}</h3>
+                    </div>
+                </Card>
+                <Card className="overflow-hidden relative">
+                    <div className="relative">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center mb-3 text-amber-400">
+                            <Calendar size={20} />
+                        </div>
+                        <p className="text-sm font-medium text-[var(--text-secondary)] mb-1">Rata-rata per Transaksi</p>
+                        <h3 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+                            {formatRupiah(expenses.length > 0 ? Math.round(totalExpenses / expenses.length) : 0)}
+                        </h3>
                     </div>
                 </Card>
             </div>
@@ -258,7 +302,7 @@ function ExpensesPage() {
                             </TableRow>
                         ) : (
                             expenses.map((expense) => (
-                                <TableRow key={expense.id}>
+                                <TableRow key={expense.id} className="group hover:bg-[var(--surface-2)]/30 transition-colors">
                                     <TableCell className="text-sm text-[var(--text-secondary)] font-medium whitespace-nowrap">
                                         {dayjs(expense.expense_date).format('DD MMM YYYY')}
                                     </TableCell>
@@ -278,10 +322,10 @@ function ExpensesPage() {
                                     </TableCell>
                                     {isOwner && (
                                         <TableCell align="right">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => openModal(expense)}
-                                                    className="p-2 text-[var(--text-secondary)] hover:text-indigo-400 hover:bg-[var(--surface-2)] rounded-lg transition-colors cursor-pointer"
+                                                    className="p-2 text-[var(--text-secondary)] hover:text-blue-400 hover:bg-[var(--surface-2)] rounded-lg transition-colors cursor-pointer"
                                                 >
                                                     <Edit2 size={16} />
                                                 </button>
@@ -317,16 +361,16 @@ function ExpensesPage() {
                     </div>
                 }
             >
-                <form id="expense-form" onSubmit={handleSave} className="space-y-4">
+                <div id="expense-form" className="space-y-3.5">
                     <Input
-                        label="Judul/Keterangan Singkat"
+                        label="Judul/Keterangan Singkat *"
                         placeholder="Contoh: Beli sabun cuci, Bayar listrik"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         required
                     />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                         <Select
                             label="Kategori"
                             value={formData.category}
@@ -338,7 +382,7 @@ function ExpensesPage() {
                         </Select>
 
                         <Input
-                            label="Tanggal"
+                            label="Tanggal *"
                             type="date"
                             value={formData.expense_date}
                             onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
@@ -347,7 +391,7 @@ function ExpensesPage() {
                     </div>
 
                     <Input
-                        label="Jumlah (Rp)"
+                        label="Jumlah (Rp) *"
                         type="text"
                         placeholder="0"
                         value={formData.amount}
@@ -360,22 +404,22 @@ function ExpensesPage() {
                         required
                     />
                     {formData.amount && (
-                        <p className="text-xs text-rose-400 mt-1 pl-1">
+                        <p className="text-[11px] text-rose-400 font-medium pl-1">
                             Format: {formatRupiah(parseInt(formData.amount || 0, 10))}
                         </p>
                     )}
 
                     <div>
-                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">Catatan Tambahan (Opsional)</label>
+                        <label className="block text-[11px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-1.5">Catatan Tambahan (Opsional)</label>
                         <textarea
-                            className="w-full bg-[var(--surface-0)] border border-[var(--surface-border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-indigo-500/50 outline-none transition-all placeholder-[var(--text-muted)] resize-none shadow-sm"
+                            className="w-full bg-[var(--surface-0)] border border-[var(--surface-border)] rounded-xl px-4 py-2 text-sm text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500/50 outline-none transition-all placeholder-[var(--text-muted)] resize-none shadow-sm"
                             placeholder="Detail pengeluaran..."
                             rows={3}
                             value={formData.notes}
                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                         />
                     </div>
-                </form>
+                </div>
             </Modal>
 
             {/* Delete Modal */}

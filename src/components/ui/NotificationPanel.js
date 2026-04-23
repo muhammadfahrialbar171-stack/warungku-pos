@@ -12,6 +12,8 @@ import {
     X,
     Award,
     ImageOff,
+    Sparkles,
+    BrainCog,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
@@ -138,6 +140,78 @@ export default function NotificationPanel() {
                 });
             }
 
+            // 6. AI Forecast Alerts — detect HIGH/CRITICAL risk products
+            try {
+                const thirtyDaysAgo = dayjs().subtract(30, 'day').toISOString();
+                const sevenDaysAgo = dayjs().subtract(7, 'day').toISOString();
+
+                const { data: txHistAI } = await supabase
+                    .from('transactions')
+                    .select('id, created_at')
+                    .eq('user_id', user.id)
+                    .gte('created_at', thirtyDaysAgo)
+                    .eq('status', 'completed');
+
+                if (txHistAI && txHistAI.length > 0) {
+                    const txIds = txHistAI.map(t => t.id);
+                    const txDateMap = {};
+                    txHistAI.forEach(t => { txDateMap[t.id] = t.created_at; });
+
+                    let aiItems = [];
+                    const chunks = [];
+                    for (let i = 0; i < txIds.length; i += 200) chunks.push(txIds.slice(i, i + 200));
+                    for (const chunk of chunks) {
+                        const { data: ci } = await supabase
+                            .from('transaction_items')
+                            .select('product_id, quantity, transaction_id')
+                            .in('transaction_id', chunk);
+                        if (ci) aiItems = aiItems.concat(ci);
+                    }
+
+                    const qtyRecent = {}, qtyBaseline = {};
+                    aiItems.forEach(item => {
+                        const d = txDateMap[item.transaction_id];
+                        if (!d) return;
+                        if (dayjs(d).isAfter(sevenDaysAgo)) {
+                            qtyRecent[item.product_id] = (qtyRecent[item.product_id] || 0) + item.quantity;
+                        } else {
+                            qtyBaseline[item.product_id] = (qtyBaseline[item.product_id] || 0) + item.quantity;
+                        }
+                    });
+
+                    const { data: activeProds } = await supabase
+                        .from('products')
+                        .select('id, name, stock')
+                        .eq('user_id', user.id)
+                        .eq('is_active', true);
+
+                    const urgentProds = (activeProds || []).map(p => {
+                        const wAvg = ((qtyRecent[p.id] || 0) / 7) * 0.7 + ((qtyBaseline[p.id] || 0) / 23) * 0.3;
+                        const daysLeft = wAvg > 0 ? Math.floor(p.stock / wAvg) : Infinity;
+                        const orderSuggestion = Math.max(0, Math.ceil(wAvg * 14) - p.stock);
+                        let riskLevel = 'SAFE';
+                        if (daysLeft !== Infinity && daysLeft <= 1) riskLevel = 'CRITICAL';
+                        else if (daysLeft !== Infinity && daysLeft <= 3) riskLevel = 'HIGH';
+                        return { ...p, daysLeft, riskLevel, orderSuggestion, wAvg };
+                    }).filter(p => (p.riskLevel === 'CRITICAL' || p.riskLevel === 'HIGH') && p.wAvg > 0)
+                      .sort((a, b) => a.daysLeft - b.daysLeft)
+                      .slice(0, 5);
+
+                    urgentProds.forEach(p => {
+                        notifs.push({
+                            id: `ai-forecast-${p.id}`,
+                            type: p.riskLevel === 'CRITICAL' ? 'danger' : 'warning',
+                            icon: p.riskLevel === 'CRITICAL' ? Sparkles : BrainCog,
+                            title: p.riskLevel === 'CRITICAL' ? '🚨 AI: Stok Kritis' : '⚠️ AI: Risiko Tinggi',
+                            message: `${p.name} — habis dalam ±${p.daysLeft === 0 ? 'Hari ini' : p.daysLeft + ' hari'} (saran: +${p.orderSuggestion})`,
+                            category: 'forecast',
+                        });
+                    });
+                }
+            } catch (aiErr) {
+                console.warn('AI forecast notification error (non-fatal):', aiErr);
+            }
+
             setNotifications(notifs);
         } catch (err) {
             console.error('Notification fetch error:', err);
@@ -163,14 +237,15 @@ export default function NotificationPanel() {
     }, [open]);
 
     const stockAlerts = notifications.filter((n) => n.category === 'stock');
-    const badgeCount = stockAlerts.length;
+    const forecastAlerts = notifications.filter((n) => n.category === 'forecast');
+    const badgeCount = stockAlerts.length + forecastAlerts.length;
 
     const typeStyles = {
         danger: 'bg-red-500/10 border-red-500/20 text-red-400',
         warning: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
         info: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
         success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-        default: 'bg-slate-700/30 border-slate-700 text-slate-300',
+        default: 'bg-[var(--surface-2)] border-[var(--surface-border)] text-[var(--text-secondary)]',
     };
 
     const iconStyles = {
@@ -178,7 +253,7 @@ export default function NotificationPanel() {
         warning: 'text-amber-400',
         info: 'text-blue-400',
         success: 'text-emerald-400',
-        default: 'text-slate-400',
+        default: 'text-[var(--text-tertiary)]',
     };
 
     return (
@@ -186,7 +261,7 @@ export default function NotificationPanel() {
             {/* Bell Button */}
             <button
                 onClick={() => setOpen(!open)}
-                className="p-2.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer relative"
+                className="p-2.5 rounded-xl hover:bg-[var(--surface-2)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer relative"
             >
                 <Bell size={20} />
                 {badgeCount > 0 && (
@@ -198,89 +273,136 @@ export default function NotificationPanel() {
 
             {/* Dropdown Panel */}
             {open && (
-                <div className="absolute right-0 top-12 w-80 sm:w-96 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl shadow-black/40 z-50 animate-scale-in overflow-hidden">
+                <div className="absolute right-[-10px] sm:right-0 top-14 w-[90vw] max-w-[320px] sm:w-[420px] sm:max-w-none bg-[var(--surface-1)] backdrop-blur-2xl border border-[var(--surface-border)] rounded-2xl shadow-xl z-50 animate-scale-in overflow-hidden">
                     {/* Panel Header */}
-                    <div className="flex items-center justify-between p-4 border-b border-slate-800">
-                        <div className="flex items-center gap-2">
-                            <Bell size={18} className="text-indigo-400" />
-                            <h3 className="font-semibold text-white text-sm">Notifikasi</h3>
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--surface-border)] bg-[var(--surface-2)]/30">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                                <Bell size={16} className="text-blue-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-[var(--text-primary)] text-sm leading-none">Notifikasi</h3>
+                                <p className="text-[10px] text-[var(--text-muted)] mt-1 font-medium">Informasi toko Anda hari ini</p>
+                            </div>
                         </div>
                         <button
                             onClick={() => setOpen(false)}
-                            className="p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg hover:bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                         >
                             <X size={16} />
                         </button>
                     </div>
 
                     {/* Notification List */}
-                    <div className="max-h-[400px] overflow-y-auto">
+                    <div className="max-h-[480px] overflow-y-auto custom-scrollbar">
                         {loading ? (
-                            <div className="p-4 space-y-3">
+                            <div className="p-5 space-y-4">
                                 {[...Array(3)].map((_, i) => (
-                                    <div key={i} className="skeleton h-16 rounded-xl" />
+                                    <div key={i} className="skeleton h-20 rounded-2xl" />
                                 ))}
                             </div>
                         ) : notifications.length === 0 ? (
-                            <div className="p-8 text-center text-slate-500">
-                                <Bell size={32} className="mx-auto mb-2 opacity-30" />
-                                <p className="text-sm">Tidak ada notifikasi</p>
+                            <div className="py-16 px-8 text-center">
+                                <div className="w-16 h-16 mx-auto rounded-full bg-[var(--surface-2)] flex items-center justify-center mb-4">
+                                    <Bell size={32} className="text-[var(--text-muted)] opacity-40" />
+                                </div>
+                                <p className="text-sm font-semibold text-[var(--text-secondary)]">Tidak Ada Notifikasi</p>
+                                <p className="text-[11px] text-[var(--text-muted)] mt-1">Kami akan memberi tahu Anda jika ada aktivitas baru.</p>
                             </div>
                         ) : (
-                            <div className="p-3 space-y-2">
+                            <div className="p-4 space-y-5">
                                 {/* Stock Alerts Section */}
                                 {stockAlerts.length > 0 && (
-                                    <>
-                                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-1 pt-1">
-                                            Peringatan Stok ({stockAlerts.length})
-                                        </p>
+                                    <div className="space-y-2.5">
+                                        <div className="flex items-center justify-between px-1">
+                                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">
+                                                Peringatan Stok ({stockAlerts.length})
+                                            </p>
+                                        </div>
                                         {stockAlerts.map((notif) => (
                                             <div
                                                 key={notif.id}
-                                                className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${typeStyles[notif.type]}`}
+                                                className={`flex items-start gap-4 p-3.5 rounded-2xl border transition-all hover:scale-[1.01] bg-[var(--surface-1)] ${typeStyles[notif.type]}`}
                                             >
-                                                <notif.icon size={18} className={`flex-shrink-0 mt-0.5 ${iconStyles[notif.type]}`} />
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-semibold">{notif.title}</p>
-                                                    <p className="text-xs opacity-80 truncate">{notif.message}</p>
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5`}>
+                                                    <notif.icon size={18} className={iconStyles[notif.type]} />
+                                                </div>
+                                                <div className="min-w-0 pt-0.5">
+                                                    <p className="text-xs font-bold leading-none mb-1 text-[var(--text-primary)]">{notif.title}</p>
+                                                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed truncate">{notif.message}</p>
                                                 </div>
                                             </div>
                                         ))}
-                                    </>
+                                    </div>
+                                )}
+
+                                {/* AI Forecast Alerts Section */}
+                                {forecastAlerts.length > 0 && (
+                                    <div className="space-y-2.5">
+                                        <div className="flex items-center gap-2 px-1">
+                                            <Sparkles size={10} className="text-indigo-400" />
+                                            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.1em]">
+                                                AI Forecast Alert ({forecastAlerts.length})
+                                            </p>
+                                        </div>
+                                        {forecastAlerts.map((notif) => (
+                                            <div
+                                                key={notif.id}
+                                                className={`flex items-start gap-4 p-3.5 rounded-2xl border transition-all hover:scale-[1.01] bg-[var(--surface-1)] ${typeStyles[notif.type]}`}
+                                            >
+                                                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-indigo-500/10">
+                                                    <notif.icon size={18} className="text-indigo-400" />
+                                                </div>
+                                                <div className="min-w-0 pt-0.5">
+                                                    <p className="text-xs font-bold leading-none mb-1 text-[var(--text-primary)]">{notif.title}</p>
+                                                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{notif.message}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <a href="/forecast" className="block text-center text-[10px] text-indigo-400 font-bold py-1 hover:underline">
+                                            Lihat Laporan Forecast Lengkap →
+                                        </a>
+                                    </div>
                                 )}
 
                                 {/* Transaction & Target Section */}
-                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider px-1 pt-2">
-                                    Aktivitas Hari Ini
-                                </p>
-                                {notifications
-                                    .filter((n) => n.category !== 'stock')
-                                    .map((notif) => (
-                                        <div
-                                            key={notif.id}
-                                            className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${typeStyles[notif.type]}`}
-                                        >
-                                            <notif.icon size={18} className={`flex-shrink-0 mt-0.5 ${iconStyles[notif.type]}`} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-semibold">{notif.title}</p>
-                                                <p className="text-xs opacity-80">{notif.message}</p>
-                                                {/* Progress bar for target */}
-                                                {notif.percentage !== undefined && (
-                                                    <div className="mt-2 w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                                                        <div
-                                                            className={`h-full rounded-full transition-all duration-500 ${notif.percentage >= 100
-                                                                ? 'bg-emerald-400'
-                                                                : notif.percentage >= 50
-                                                                    ? 'bg-amber-400'
-                                                                    : 'bg-indigo-400'
-                                                                }`}
-                                                            style={{ width: `${notif.percentage}%` }}
-                                                        />
-                                                    </div>
-                                                )}
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center justify-between px-1">
+                                        <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.1em]">
+                                            Aktivitas Hari Ini
+                                        </p>
+                                    </div>
+                                    {notifications
+                                        .filter((n) => n.category !== 'stock' && n.category !== 'forecast')
+                                        .map((notif) => (
+                                            <div
+                                                key={notif.id}
+                                                className={`flex items-start gap-4 p-3.5 rounded-2xl border transition-all hover:scale-[1.01] bg-[var(--surface-1)] ${typeStyles[notif.type]}`}
+                                            >
+                                                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/5">
+                                                    <notif.icon size={18} className={iconStyles[notif.type]} />
+                                                </div>
+                                                <div className="flex-1 min-w-0 pt-0.5">
+                                                    <p className="text-xs font-bold leading-none mb-1 text-[var(--text-primary)]">{notif.title}</p>
+                                                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">{notif.message}</p>
+                                                    {/* Progress bar for target */}
+                                                    {notif.percentage !== undefined && (
+                                                        <div className="mt-3 w-full bg-[var(--surface-2)] rounded-full h-1.5 overflow-hidden border border-[var(--surface-border)]">
+                                                            <div
+                                                                className={`h-full rounded-full transition-all duration-700 ease-out ${notif.percentage >= 100
+                                                                    ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]'
+                                                                    : notif.percentage >= 50
+                                                                        ? 'bg-amber-400'
+                                                                        : 'bg-blue-400'
+                                                                    }`}
+                                                                style={{ width: `${notif.percentage}%` }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                </div>
                             </div>
                         )}
                     </div>

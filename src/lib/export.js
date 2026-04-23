@@ -120,3 +120,65 @@ export function exportProductsToExcel(products, filename = 'daftar-produk') {
     XLSX.utils.book_append_sheet(wb, ws, 'Produk');
     XLSX.writeFile(wb, `${filename}.xlsx`);
 }
+
+/**
+ * Export expenses to Excel
+ */
+export function exportExpensesToExcel(expenses, filename = 'daftar-pengeluaran') {
+    const data = expenses.map((e, index) => ({
+        'No': index + 1,
+        'Tanggal': e.expense_date,
+        'Judul': e.title,
+        'Kategori': e.category,
+        'Jumlah (Rp)': e.amount,
+        'Catatan': e.notes || '-',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [
+        { wch: 5 },
+        { wch: 15 },
+        { wch: 25 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 30 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pengeluaran');
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+}
+
+/**
+ * Export shift history to Excel
+ */
+export function exportShiftsToExcel(shifts, filename = 'histori-shift') {
+    const data = shifts.map((s, index) => ({
+        'No': index + 1,
+        'Nama Kasir': s.users?.full_name || '-',
+        'Mulai': formatDateTime(s.start_time),
+        'Selesai': s.end_time ? formatDateTime(s.end_time) : 'Aktif',
+        'Modal Awal (Rp)': s.starting_cash,
+        'Ekspektasi (Rp)': s.expected_cash || 0,
+        'Aktual (Rp)': s.actual_cash || 0,
+        'Selisih (Rp)': s.actual_cash !== null ? s.actual_cash - s.expected_cash : 0,
+        'Status': s.status === 'open' ? 'Terbuka' : 'Ditutup',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [
+        { wch: 5 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Shifts');
+    XLSX.writeFile(wb, `${filename}.xlsx`);
+}

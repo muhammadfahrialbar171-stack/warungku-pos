@@ -35,7 +35,7 @@ export default class ErrorBoundary extends Component {
                     )}
                     <button
                         onClick={() => this.setState({ hasError: false, error: null })}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20 transition-colors cursor-pointer text-sm font-medium"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer text-sm font-medium"
                     >
                         <RefreshCw size={16} />
                         Coba Lagi

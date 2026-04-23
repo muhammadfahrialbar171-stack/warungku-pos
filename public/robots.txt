@@ -1,0 +1,19 @@
+User-agent: *
+Disallow: /dashboard
+Disallow: /cashier
+Disallow: /settings
+Disallow: /products
+Disallow: /stock
+Disallow: /transactions
+Disallow: /customers
+Disallow: /expenses
+Disallow: /reports
+Disallow: /shifts
+Disallow: /barcode
+Disallow: /forecast
+
+Allow: /
+Allow: /login
+Allow: /register
+
+Sitemap: https://warungku-pos.web.app/sitemap.xml

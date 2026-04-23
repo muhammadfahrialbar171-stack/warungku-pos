@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Clock, Search, Filter, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Clock, Search, Filter, AlertTriangle, CheckCircle2, Download } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { formatRupiah, cn } from '@/lib/utils';
@@ -15,11 +15,13 @@ import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import EmptyState from '@/components/ui/EmptyState';
 import PageHeader from '@/components/ui/PageHeader';
 import { useDebounce } from '@/hooks/useDebounce';
+import { exportShiftsToExcel } from '@/lib/export';
 
 dayjs.locale('id');
 
 export default function ShiftsPage() {
-    const { user, isOwner } = useAuthStore();
+    const { user } = useAuthStore();
+    const isOwner = !user?.role || user?.role === 'owner';
     const [shifts, setShifts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -84,112 +86,171 @@ export default function ShiftsPage() {
         }
     };
 
+    const totalShifts = shifts.length;
+    const activeShifts = shifts.filter(s => s.status === 'open').length;
+    const totalDiff = shifts.reduce((acc, s) => {
+        if (s.status === 'closed' && s.actual_cash !== null) {
+            return acc + (s.actual_cash - s.expected_cash);
+        }
+        return acc;
+    }, 0);
+
     return (
-        <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
+        <div className="space-y-6 animate-fade-in relative z-10">
             {/* Header */}
             <PageHeader
                 title="Histori Shift"
                 description="Pantau riwayat buka-tutup shift dan laporan kas per kasir"
+                icon={<Clock size={28} className="text-blue-400" />}
+                action={
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <div className="w-full sm:w-64">
+                            <Input
+                                placeholder="Cari nama kasir..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                icon={Search}
+                            />
+                        </div>
+                        <Button
+                            variant="secondary"
+                            onClick={() => exportShiftsToExcel(shifts, `Histori_Shift_${dayjs().format('YYYYMMDD')}`)}
+                            icon={Download}
+                            disabled={shifts.length === 0}
+                        >
+                            Excel
+                        </Button>
+                    </div>
+                }
             />
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex w-full md:w-auto gap-3">
-                    <div className="relative flex-1 md:w-64">
-                        <Input
-                            placeholder="Cari nama kasir..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            icon={Search}
-                        />
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card className="overflow-hidden relative">
+                    <div className="relative">
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center mb-3 text-blue-400">
+                            <Clock size={20} />
+                        </div>
+                        <p className="text-sm font-medium text-[var(--text-secondary)] mb-1">Total Shift</p>
+                        <h3 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{totalShifts}</h3>
                     </div>
-                </div>
+                </Card>
+                <Card className="overflow-hidden relative">
+                    <div className="relative">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center mb-3 text-emerald-400">
+                            <CheckCircle2 size={20} />
+                        </div>
+                        <p className="text-sm font-medium text-[var(--text-secondary)] mb-1">Shift Aktif</p>
+                        <h3 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{activeShifts}</h3>
+                    </div>
+                </Card>
+                <Card className="overflow-hidden relative">
+                    <div className={cn(
+                        "relative",
+                        totalDiff < 0 ? "text-rose-400" : totalDiff > 0 ? "text-amber-400" : "text-emerald-400"
+                    )}>
+                        <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center mb-3",
+                            totalDiff < 0 ? "bg-rose-500/20" : totalDiff > 0 ? "bg-amber-500/20" : "bg-emerald-500/20"
+                        )}>
+                            <AlertTriangle size={20} />
+                        </div>
+                        <p className="text-sm font-medium text-[var(--text-secondary)] mb-1">Total Selisih Kas</p>
+                        <h3 className="text-3xl font-bold tracking-tight">
+                            {totalDiff > 0 ? '+' : ''}{formatRupiah(totalDiff)}
+                        </h3>
+                    </div>
+                </Card>
             </div>
 
             {/* List */}
-            {loading ? (
-                <div className="space-y-4 text-center py-20">
-                    <div className="flex justify-center mb-4">
-                        <Clock className="animate-spin text-indigo-500" size={40} />
+            <Card className="!p-0 overflow-hidden">
+                {loading ? (
+                    <div className="space-y-4 text-center py-20">
+                        <div className="flex justify-center mb-4">
+                            <Clock className="animate-spin text-blue-500" size={40} />
+                        </div>
+                        <p className="text-[var(--text-secondary)]">Memuat data shift...</p>
                     </div>
-                    <p className="text-[var(--text-secondary)]">Memuat data shift...</p>
-                </div>
-            ) : shifts.length === 0 ? (
-                <EmptyState
-                    icon={Clock}
-                    title="Belum ada riwayat shift"
-                />
-            ) : (
-                <Card className="!p-0 overflow-hidden shadow-xl shadow-black/20">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="pl-6">Kasir & Waktu</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Modal Awal</TableHead>
-                                <TableHead>Sistem (Tunai)</TableHead>
-                                <TableHead>Aktual Kasir</TableHead>
-                                <TableHead align="right" className="pr-6">Selisih</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {shifts.map((shift) => {
-                                const diff = shift.actual_cash !== null ? shift.actual_cash - shift.expected_cash : null;
-                                const isOpen = shift.status === 'open';
+                ) : shifts.length === 0 ? (
+                    <EmptyState
+                        icon={Clock}
+                        title="Belum ada riwayat shift"
+                        description={search ? `Tidak ada hasil untuk "${search}"` : "Belum ada riwayat shift yang tercatat di toko ini."}
+                    />
+                ) : (
+                    <div className="table-container mb-0 border-none">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest">Kasir & Waktu</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Status</TableHead>
+                                    <TableHead align="right" className="text-[10px] font-black uppercase tracking-widest">Modal Awal</TableHead>
+                                    <TableHead align="right" className="text-[10px] font-black uppercase tracking-widest">Sistem (Tunai)</TableHead>
+                                    <TableHead align="right" className="text-[10px] font-black uppercase tracking-widest">Aktual Kasir</TableHead>
+                                    <TableHead align="right" className="pr-6 text-[10px] font-black uppercase tracking-widest">Selisih</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {shifts.map((shift) => {
+                                    const diff = shift.actual_cash !== null ? shift.actual_cash - shift.expected_cash : null;
+                                    const isOpen = shift.status === 'open';
 
-                                return (
-                                    <TableRow key={shift.id}>
-                                        <TableCell className="pl-6">
-                                            <div className="font-medium text-[var(--text-primary)] mb-1">
-                                                {shift.users?.full_name || shift.users?.email || 'Kasir'}
-                                            </div>
-                                            <div className="text-xs text-[var(--text-secondary)] flex flex-col gap-0.5">
-                                                <span>Mulai: {dayjs(shift.start_time).format('DD MMM YYYY, HH:mm')}</span>
-                                                {shift.end_time && (
-                                                    <span>Selesai: {dayjs(shift.end_time).format('DD MMM YYYY, HH:mm')}</span>
+                                    return (
+                                        <TableRow key={shift.id}>
+                                            <TableCell className="pl-6">
+                                                <div className="font-bold text-[var(--text-primary)] mb-1">
+                                                    {shift.users?.full_name || shift.users?.email || 'Kasir'}
+                                                </div>
+                                                <div className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-tertiary)] flex flex-col gap-0.5">
+                                                    <span>In: {dayjs(shift.start_time).format('DD/MM/YY HH:mm')}</span>
+                                                    {shift.end_time && (
+                                                        <span>Out: {dayjs(shift.end_time).format('DD/MM/YY HH:mm')}</span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge
+                                                    variant={isOpen ? 'primary' : 'success'}
+                                                    className="uppercase text-[9px] font-bold tracking-widest px-2 py-0.5"
+                                                >
+                                                    {isOpen ? 'Aktif' : 'Selesai'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell align="right" className="text-[var(--text-secondary)] font-medium">
+                                                {formatRupiah(shift.starting_cash)}
+                                            </TableCell>
+                                            <TableCell align="right" className="text-[var(--text-secondary)] font-medium">
+                                                {isOpen ? '-' : formatRupiah(shift.expected_cash)}
+                                            </TableCell>
+                                            <TableCell align="right" className="font-bold text-[var(--text-primary)]">
+                                                {isOpen ? '-' : formatRupiah(shift.actual_cash)}
+                                            </TableCell>
+                                            <TableCell align="right" className="pr-6 font-extrabold uppercase text-[10px] tracking-tight">
+                                                {isOpen || diff === null ? (
+                                                    <span className="text-[var(--text-muted)]">-</span>
+                                                ) : diff === 0 ? (
+                                                    <span className="text-emerald-400 flex items-center justify-end gap-1">
+                                                        <CheckCircle2 size={12} /> Pas
+                                                    </span>
+                                                ) : diff > 0 ? (
+                                                    <span className="text-amber-500">
+                                                        +{formatRupiah(diff)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-rose-400 flex items-center justify-end gap-1">
+                                                        <AlertTriangle size={12} /> {formatRupiah(diff)}
+                                                    </span>
                                                 )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={isOpen ? 'primary' : 'success'}
-                                                className="uppercase text-[10px] tracking-widest"
-                                            >
-                                                {isOpen ? 'Aktif' : 'Selesai'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-[var(--text-secondary)]">
-                                            {formatRupiah(shift.starting_cash)}
-                                        </TableCell>
-                                        <TableCell className="text-[var(--text-secondary)]">
-                                            {isOpen ? '-' : formatRupiah(shift.expected_cash)}
-                                        </TableCell>
-                                        <TableCell className="font-medium text-[var(--text-primary)]">
-                                            {isOpen ? '-' : formatRupiah(shift.actual_cash)}
-                                        </TableCell>
-                                        <TableCell align="right" className="pr-6 font-bold">
-                                            {isOpen || diff === null ? (
-                                                <span className="text-[var(--text-muted)]">-</span>
-                                            ) : diff === 0 ? (
-                                                <span className="text-emerald-400 flex items-center justify-end gap-1">
-                                                    <CheckCircle2 size={14} /> Pas
-                                                </span>
-                                            ) : diff > 0 ? (
-                                                <span className="text-amber-400 flex items-center justify-end gap-1">
-                                                    +{formatRupiah(diff)}
-                                                </span>
-                                            ) : (
-                                                <span className="text-rose-400 flex items-center justify-end gap-1">
-                                                    <AlertTriangle size={14} /> {formatRupiah(diff)}
-                                                </span>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </Card>
-            )}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </Card>
         </div>
     );
 }

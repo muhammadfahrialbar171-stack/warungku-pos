@@ -3,10 +3,10 @@
 import { cn } from '@/lib/utils';
 
 const variants = {
-    primary: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-500/20 ring-1 ring-inset ring-indigo-400/20',
+    primary: 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-dark)] text-white',
     secondary: 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-primary)] border border-[var(--surface-border)]',
-    danger: 'bg-red-600 hover:bg-red-500 text-white shadow-sm shadow-red-500/20 ring-1 ring-inset ring-red-400/20',
-    success: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm shadow-emerald-500/20 ring-1 ring-inset ring-emerald-400/20',
+    danger: 'bg-red-600 hover:bg-red-500 text-white',
+    success: 'bg-emerald-600 hover:bg-emerald-500 text-white',
     ghost: 'hover:bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
     outline: 'border border-[var(--surface-border)] hover:bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
 };
@@ -34,7 +34,7 @@ export default function Button({
     return (
         <button
             className={cn(
-                'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer select-none',
+                'inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer select-none',
                 variants[variant],
                 sizes[size],
                 className

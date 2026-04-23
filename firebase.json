@@ -1,0 +1,57 @@
+{
+  "hosting": {
+    "public": "out",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "cleanUrls": true,
+    "rewrites": [
+      { "source": "/_next/static/**/*", "destination": "/_next/static/**/*" },
+
+      { "source": "/barcode/__next.barcode.__PAGE__.txt", "destination": "/barcode/__next.barcode/__PAGE__.txt" },
+      { "source": "/cashier/__next.cashier.__PAGE__.txt", "destination": "/cashier/__next.cashier/__PAGE__.txt" },
+      { "source": "/customers/__next.customers.__PAGE__.txt", "destination": "/customers/__next.customers/__PAGE__.txt" },
+      { "source": "/dashboard/__next.dashboard.__PAGE__.txt", "destination": "/dashboard/__next.dashboard/__PAGE__.txt" },
+      { "source": "/expenses/__next.expenses.__PAGE__.txt", "destination": "/expenses/__next.expenses/__PAGE__.txt" },
+      { "source": "/forecast/__next.forecast.__PAGE__.txt", "destination": "/forecast/__next.forecast/__PAGE__.txt" },
+      { "source": "/login/__next.login.__PAGE__.txt", "destination": "/login/__next.login/__PAGE__.txt" },
+      { "source": "/products/__next.products.__PAGE__.txt", "destination": "/products/__next.products/__PAGE__.txt" },
+      { "source": "/reports/__next.reports.__PAGE__.txt", "destination": "/reports/__next.reports/__PAGE__.txt" },
+      { "source": "/settings/__next.settings.__PAGE__.txt", "destination": "/settings/__next.settings/__PAGE__.txt" },
+      { "source": "/shifts/__next.shifts.__PAGE__.txt", "destination": "/shifts/__next.shifts/__PAGE__.txt" },
+      { "source": "/stock/__next.stock.__PAGE__.txt", "destination": "/stock/__next.stock/__PAGE__.txt" },
+      { "source": "/transactions/__next.transactions.__PAGE__.txt", "destination": "/transactions/__next.transactions/__PAGE__.txt" },
+      { "source": "/_not-found/__next._not-found.__PAGE__.txt", "destination": "/_not-found/__next._not-found/__PAGE__.txt" }
+    ],
+    "headers": [
+      {
+        "source": "/_next/static/**/*",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+          { "key": "Pragma", "value": "no-cache" },
+          { "key": "Expires", "value": "0" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+          { "key": "Pragma", "value": "no-cache" },
+          { "key": "Expires", "value": "0" },
+          { "key": "Service-Worker-Allowed", "value": "/" }
+        ]
+      },
+      {
+        "source": "/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+          { "key": "Pragma", "value": "no-cache" },
+          { "key": "Expires", "value": "0" }
+        ]
+      }
+    ]
+  }
+}

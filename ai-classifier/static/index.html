@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Smart Classifier | Premium POS Suite</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="glow-bg"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo-area">
+                <div class="ai-icon">
+                    <i data-lucide="sparkles"></i>
+                </div>
+                <h1>Smart AI Classifier</h1>
+            </div>
+            <p class="subtitle">Kategorisasi produk cerdas berbasis Zero-Shot Deep Learning</p>
+        </header>
+
+        <main>
+            <section class="input-section glass">
+                <div class="card-header">
+                    <i data-lucide="text-cursor"></i>
+                    <h2>Analisa Produk</h2>
+                </div>
+                <div class="form-group">
+                    <label for="product-name">Nama Produk</label>
+                    <input type="text" id="product-name" placeholder="Misal: Indomie Goreng Spesial 85gr" autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label>Kategori Dinamis (Tekan Enter untuk menambah)</label>
+                    <div class="tags-input-container" id="tags-container">
+                        <input type="text" id="tag-input" placeholder="Tambah kategori..." autocomplete="off">
+                    </div>
+                </div>
+
+                <button id="classify-btn" class="primary-btn">
+                    <span>Mulai Klasifikasi</span>
+                    <i data-lucide="cpu"></i>
+                </button>
+            </section>
+
+            <section class="result-section" id="result-area" style="display: none;">
+                <div class="glass result-card">
+                    <div class="card-header">
+                        <i data-lucide="bar-chart-3"></i>
+                        <h2>Hasil Analisa</h2>
+                    </div>
+                    
+                    <div id="best-match-hero" class="best-match">
+                        <span class="label">Kategori Terbaik:</span>
+                        <h3 id="top-category-name">-</h3>
+                    </div>
+
+                    <div class="scores-list" id="scores-list">
+                        <!-- Scores will be injected here -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 Antigravity AI POS Integration</p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

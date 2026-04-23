@@ -49,14 +49,16 @@ export function getClientIP(request) {
 }
 
 // Cleanup old entries every 5 minutes to prevent memory leak
-setInterval(() => {
-    const cutoff = Date.now() - 60_000;
-    for (const [key, timestamps] of requestMap.entries()) {
-        const filtered = timestamps.filter(ts => ts > cutoff);
-        if (filtered.length === 0) {
-            requestMap.delete(key);
-        } else {
-            requestMap.set(key, filtered);
+if (typeof global !== 'undefined' && !global._rateLimitCleanup) {
+    global._rateLimitCleanup = setInterval(() => {
+        const cutoff = Date.now() - 60_000;
+        for (const [key, timestamps] of requestMap.entries()) {
+            const filtered = timestamps.filter(ts => ts > cutoff);
+            if (filtered.length === 0) {
+                requestMap.delete(key);
+            } else {
+                requestMap.set(key, filtered);
+            }
         }
-    }
-}, 5 * 60_000);
+    }, 5 * 60_000);
+}

@@ -15,23 +15,27 @@ import {
   Printer,
   Share2,
   Package,
-  Tag,
   ScanLine,
   Users,
-  PlayCircle,
   Clock,
-  History,
   LogOut,
+  LayoutGrid,
+  List,
+  ChevronDown,
 } from "lucide-react";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import { printReceipt, shareReceiptWhatsApp } from "@/lib/receipt";
+import { printReceipt, shareReceiptWhatsApp, printShiftReport } from "@/lib/receipt";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Modal from "@/components/ui/Modal";
-import { Select } from "@/components/ui/Input";
+import Card from "@/components/ui/Card";
+import Input, { Select } from "@/components/ui/Input";
+import EmptyState from "@/components/ui/EmptyState";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/authStore";
+import { useDashboardStore } from "@/store/dashboardStore";
 import { useCartStore } from "@/store/cartStore";
+import { useUIStore } from "@/store/uiStore";
 import { formatRupiah, formatRupiahShort, generateInvoice, cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import {
@@ -39,15 +43,171 @@ import {
   getProductsOffline,
   saveCustomersOffline,
   getCustomersOffline,
+  saveCategoriesOffline,
+  getCategoriesOffline,
   enqueueOfflineTransaction,
   getOfflineTransactionsQueue,
   removeTransactionFromQueue,
 } from "@/lib/indexedDB";
 import { useToast } from "@/components/ui/Toast";
 import { useDebounce } from "@/hooks/useDebounce";
+import { playAudio } from "@/lib/audio";
+import React from 'react';
+
+// --- Memoized Components for Performance ---
+
+const CategoryItem = React.memo(({ cat, isActive, onClick }) => (
+  <button
+    onClick={() => onClick(cat.id === 'all' ? 'all' : String(cat.id))}
+    className={cn(
+      "px-5 py-2.5 rounded-xl text-[13px] font-bold whitespace-nowrap transition-all border shrink-0 active:scale-95",
+      isActive 
+        ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20" 
+        : "bg-[var(--surface-2)]/50 border-[var(--surface-border)] text-[var(--text-muted)] hover:bg-[var(--surface-2)] active:bg-[var(--surface-3)]"
+    )}
+  >
+    {cat.name}
+  </button>
+));
+CategoryItem.displayName = 'CategoryItem';
+
+const ProductCard = React.memo(({ p, viewMode, onAdd, formatRupiah, quantity = 0 }) => {
+  const hasDiscount = p.discount > 0;
+  const isOutOfStock = p.stock <= 0;
+  
+  const discountPrice = useMemo(() => {
+    if (!p.discount || p.discount <= 0) return p.price;
+    if (p.discount_type === "percentage") return Math.round(p.price * (1 - p.discount / 100));
+    return Math.max(0, p.price - p.discount);
+  }, [p.price, p.discount, p.discount_type]);
+
+  return (
+    <div
+      onClick={() => onAdd({ ...p, price: discountPrice })}
+      className={cn(
+        "group bg-[var(--surface-1)] border border-[var(--surface-border)] rounded-2xl overflow-hidden cursor-pointer transition-all hover:border-[var(--color-primary)]/50 active:scale-[0.96] select-none shadow-sm h-full flex flex-col",
+        isOutOfStock && "opacity-60 grayscale cursor-not-allowed",
+        viewMode === "list" ? "flex-row p-3 gap-4" : "p-0"
+      )}
+    >
+      <div className={cn(
+        "relative bg-[var(--surface-2)]/50 flex-shrink-0 overflow-hidden", 
+        viewMode === "grid" ? "aspect-square w-full" : "w-16 h-16 rounded-xl"
+      )}>
+        {p.image_url ? (
+          <img src={p.image_url} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Package size={viewMode === "grid" ? 24 : 20} className="text-[var(--text-muted)]/30" />
+          </div>
+        )}
+        {hasDiscount && (
+          <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-red-500 text-[10px] font-black text-white rounded shadow-lg z-10">
+            {p.discount_type === 'percentage' ? `-${p.discount}%` : 'PROMO'}
+          </div>
+        )}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-20">
+            <div className="bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded-md shadow-xl border border-white/20 transform -rotate-12 animate-pulse">
+                STOK HABIS
+            </div>
+          </div>
+        )}
+        {quantity > 0 && (
+          <div className="absolute top-2 right-2 min-w-[20px] h-5 bg-blue-600 text-[10px] font-black text-white rounded-full flex items-center justify-center px-1.5 shadow-lg border-2 border-white z-30 animate-scale-in">
+            {quantity}
+          </div>
+        )}
+      </div>
+      <div className={cn("p-2.5 flex flex-col flex-1", viewMode === "list" && "py-0 px-2 justify-center")}>
+        <h3 className="text-[12px] font-bold text-[var(--text-primary)] line-clamp-2 leading-tight mb-1 min-h-[2em]">{p.name}</h3>
+        <div className="mt-auto">
+            <p className="text-[14px] font-black text-[var(--color-primary)] tracking-tight">{formatRupiah(discountPrice)}</p>
+            <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-[var(--surface-border)]/50">
+              <span className={cn(
+                  "text-[10px] font-bold px-1.5 py-0.5 rounded",
+                  p.stock < 10 ? "text-rose-500 bg-rose-500/10" : "text-[var(--text-muted)] bg-[var(--surface-2)]"
+              )}>
+                {p.stock} <span className="font-medium">Unit</span>
+              </span>
+              <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform group-active:scale-90",
+                  isOutOfStock 
+                    ? "bg-rose-500/20 text-rose-500 cursor-not-allowed" 
+                    : "bg-[var(--color-primary)]/10 text-[var(--color-primary)] group-active:bg-[var(--color-primary)] group-active:text-white"
+              )}>
+                {isOutOfStock ? <X size={16} strokeWidth={3} /> : <Plus size={16} strokeWidth={2.5} />}
+              </div>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+ProductCard.displayName = 'ProductCard';
+
+const CartItem = React.memo(({ item, onIncrement, onDecrement, onRemove, formatRupiah }) => {
+    const [confirmDelete, setConfirmDelete] = React.useState(false);
+
+    return (
+    <div className="p-3 bg-[var(--surface-2)]/50 rounded-xl sm:rounded-2xl border border-[var(--surface-border)] group animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="flex justify-between items-start gap-3 mb-2">
+            <div className="min-w-0 flex-1">
+                <p className="text-[12px] sm:text-[13px] font-bold text-[var(--text-primary)] leading-tight mb-0.5">{item.name}</p>
+                <p className="text-[11px] font-black text-[var(--color-primary)]">{formatRupiah(item.price)}</p>
+            </div>
+            {/* Delete button + inline confirm */}
+            {confirmDelete ? (
+                <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+                    <span className="text-[10px] text-[var(--text-muted)] font-bold whitespace-nowrap">Hapus?</span>
+                    <button
+                        onClick={() => { onRemove(item.id); setConfirmDelete(false); }}
+                        className="px-2.5 py-1 rounded-lg bg-rose-500 text-white text-[10px] font-black transition-all active:scale-90"
+                    >Ya</button>
+                    <button
+                        onClick={() => setConfirmDelete(false)}
+                        className="px-2.5 py-1 rounded-lg bg-[var(--surface-2)] border border-[var(--surface-border)] text-[10px] font-black transition-all active:scale-90"
+                    >Batal</button>
+                </div>
+            ) : (
+                <button 
+                    onClick={() => setConfirmDelete(true)} 
+                    className="w-9 h-9 -my-2 -mr-2 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer active:scale-90 shrink-0"
+                >
+                    <Trash2 size={16} />
+                </button>
+            )}
+        </div>
+        <div className="flex items-center justify-between">
+            <div className="flex items-center bg-[var(--surface-1)] rounded-lg sm:rounded-xl p-0.5 sm:p-1 border border-[var(--surface-border)] shadow-inner">
+                <button 
+                    onClick={() => onDecrement(item.id)} 
+                    className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center hover:bg-[var(--surface-2)] active:bg-[var(--surface-3)] rounded-lg text-rose-500 transition-colors shrink-0"
+                >
+                    <Minus size={16} strokeWidth={2.5} />
+                </button>
+                <span className="w-8 flex-shrink-0 text-center text-[13px] font-black tabular-nums">{item.quantity}</span>
+                <button 
+                    onClick={() => onIncrement(item.id)} 
+                    className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center hover:bg-[var(--surface-2)] active:bg-[var(--surface-3)] rounded-lg text-emerald-500 transition-colors shrink-0"
+                >
+                    <Plus size={16} strokeWidth={2.5} />
+                </button>
+            </div>
+            <p className="text-[14px] font-black text-[var(--text-primary)] tabular-nums tracking-tighter">
+                {formatRupiah(item.price * item.quantity)}
+            </p>
+        </div>
+    </div>
+    );
+});
+CartItem.displayName = 'CartItem';
+
+const PRODUCT_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+const PRODUCT_CACHE_KEY = 'warungku_products_cached_at';
 
 export default function CashierPage() {
-  const { user, session } = useAuthStore();
+  const { user } = useAuthStore();
   const {
     items,
     addItem,
@@ -58,8 +218,22 @@ export default function CashierPage() {
     setItems,
     getTotal,
     getTotalItems,
+    heldTransactions,
+    holdTransaction,
+    restoreTransaction,
+    deleteHeldTransaction,
   } = useCartStore();
+  
+  // Fail-safe calculation for total items if undefined
+  const finalTotalItems = items.reduce((sum, i) => sum + (i.quantity || 0), 0);
+
   const toast = useToast();
+
+  const vibrate = useCallback((pattern = 10) => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(pattern);
+    }
+  }, []);
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -70,43 +244,49 @@ export default function CashierPage() {
   const [loading, setLoading] = useState(true);
   const [checkoutModal, setCheckoutModal] = useState(false);
   const [successModal, setSuccessModal] = useState(false);
+  const [heldModal, setHeldModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [paidAmount, setPaidAmount] = useState("");
   const [processing, setProcessing] = useState(false);
+  const handleRestore = useCallback((id) => {
+    const held = restoreTransaction(id);
+    if (held) {
+      setSelectedCustomerId(held.customerId || "");
+      setTxDiscount(held.discount || "");
+      setTxDiscountType(held.discountType || "fixed");
+      setHeldModal(false);
+      toast.success('Transaksi berhasil dipulihkan');
+    }
+  }, [restoreTransaction, toast]);
   const [lastInvoice, setLastInvoice] = useState("");
   const lastCheckoutRef = useRef(null);
   const [txDiscount, setTxDiscount] = useState("");
   const [txDiscountType, setTxDiscountType] = useState("fixed");
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const cashierCartOpen = useUIStore(state => state.cashierCartOpen);
+  const setCashierCartOpen = useUIStore(state => state.setCashierCartOpen);
+  const [confirmClearCart, setConfirmClearCart] = useState(false);
+  const [viewMode, setViewMode] = useState("grid");
 
-  // Barcode Scanner State
+  // Barcode Scanner
   const [scannerModal, setScannerModal] = useState(false);
   const scannerRef = useRef(null);
 
-  // Hold Bill State
-  const [heldBills, setHeldBills] = useState([]);
-  const [holdModal, setHoldModal] = useState(false);
-
-  // Offline State
+  // Offline/Online
   const [isOnline, setIsOnline] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [transactionSuccessData, setTransactionSuccessData] = useState(null);
-
-  // Tax Settings
   const [taxRate, setTaxRate] = useState(0);
 
-  // Shift Management State
+  // Shift
   const [activeShift, setActiveShift] = useState(null);
   const [openShiftModal, setOpenShiftModal] = useState(false);
   const [closeShiftModal, setCloseShiftModal] = useState(false);
   const [startingCash, setStartingCash] = useState("");
   const [actualCash, setActualCash] = useState("");
 
+
+
   const loadActiveShift = useCallback(async () => {
     if (!user) return;
-
-    // Bypassing shift requirement for owner accounts
     if (user.role === "owner" || !user.role) {
       setActiveShift(null);
       setOpenShiftModal(false);
@@ -129,224 +309,269 @@ export default function CashierPage() {
         setOpenShiftModal(true);
       }
     } catch (err) {
-      if (err.code !== "PGRST116") {
-        console.error("Error loading active shift:", err);
-      } else {
-        setActiveShift(null);
-        setOpenShiftModal(true);
-      }
+      setActiveShift(null);
+      setOpenShiftModal(true);
     }
-  }, [user]);
+  }, [user?.id, user?.owner_id]);
 
-  // Listen to network status
   useEffect(() => {
-    setIsOnline(navigator.onLine);
-
-    const handleOnline = () => {
-      setIsOnline(true);
-      syncOfflineTransactions();
-    };
+    setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
-  // Function to sync queued offline transactions
-  const syncOfflineTransactions = async () => {
-    if (!navigator.onLine) return;
+  const searchRef = useRef(null);
+  const paidAmountRef = useRef(null);
 
+  // --- Calculations ---
+  const totalAmount = getTotal();
+  const txDiscountAmount = txDiscountType === "percentage" ? Math.round((totalAmount * parseInt(txDiscount || "0")) / 100) : parseInt(txDiscount || "0");
+  const taxAmount = Math.round((totalAmount - txDiscountAmount) * (taxRate / 100));
+  const finalAmount = Math.max(0, totalAmount - txDiscountAmount + taxAmount);
+  const changeValue = parseInt(paidAmount || "0") - finalAmount;
+
+  const processSupabaseCheckout = async (payload) => {
+    const txPayload = {
+      user_id: payload.user_id,
+      invoice_number: payload.invoiceNumber,
+      total_amount: payload.totalAmount,
+      total_items: payload.items.reduce((sum, item) => sum + item.quantity, 0),
+      payment_method: payload.paymentMethod,
+      status: "completed",
+      customer_id: payload.customerId || null,
+      shift_id: payload.shift_id || null,
+      discount_amount: payload.txDiscount || 0,
+      tax_amount: payload.taxAmount || 0,
+      paid_amount: payload.paidAmount || 0,
+      change_amount: payload.change || 0,
+    };
+
+    const { data: transaction, error: txError } = await supabase.from("transactions").insert(txPayload).select().single();
+    if (txError) throw txError;
+
+    const txItems = payload.items.map((item) => ({
+      transaction_id: transaction.id,
+      product_id: item.product_id || item.id,
+      product_name: item.name || item.product_name,
+      quantity: item.quantity,
+      price: item.price,
+      cost_price: item.cost_price || 0,
+      subtotal: (item.price || 0) * (item.quantity || 0),
+    }));
+
+    const { error: itemsError } = await supabase.from("transaction_items").insert(txItems);
+    if (itemsError) throw itemsError;
+
+    // Stock sync
+    const productIds = payload.items.map(i => i.product_id || i.id);
+    const { data: currentStocks } = await supabase.from("products").select("id, stock").in("id", productIds);
+
+    if (currentStocks) {
+      await Promise.all(payload.items.map(item => {
+        const dbProd = currentStocks.find(p => p.id === (item.product_id || item.id));
+        if (!dbProd) return Promise.resolve();
+        const newStock = dbProd.stock - item.quantity;
+        return Promise.all([
+          supabase.from("products").update({ stock: newStock }).eq("id", dbProd.id),
+          supabase.from("stock_history").insert({
+            product_id: dbProd.id,
+            user_id: payload.user_id,
+            type: "sale",
+            quantity: -item.quantity,
+            stock_before: dbProd.stock,
+            stock_after: newStock,
+          })
+        ]);
+      }));
+    }
+    return true;
+  };
+
+  const saveTransactionToDB = async (method = "cash", isQuickPay = false) => {
+    if (processing) return;
+    setProcessing(true);
     try {
-      setSyncing(true);
-      const queue = await getOfflineTransactionsQueue();
-      if (queue.length === 0) return;
+      const now = dayjs();
+      const invoiceNumber = generateInvoice();
+      const storeId = user.owner_id || user.id;
 
-      let successCount = 0;
-      for (const tx of queue) {
-        const payload = {
-          invoiceNumber: tx.invoiceNumber,
-          items: tx.items,
-          totalAmount: tx.totalAmount,
-          paymentMethod: tx.paymentMethod,
-          paidAmount: tx.paidAmount || tx.totalAmount,
-          change: tx.change || 0,
-          customerId: tx.customerId || null,
-          txDiscount: tx.txDiscount || 0, // FIX: consistent naming with processSupabaseCheckout
-          taxAmount: tx.taxAmount || 0,
-          receiptHeader: tx.receiptHeader,
-          receiptFooter: tx.receiptFooter,
-          costPrice: tx.costPrice || 0,
-          createdAt: tx.createdAt || new Date(),
-        };
+      const effectivePaidAmount = isQuickPay ? finalAmount : (method === "cash" ? parseInt(paidAmount || "0") : finalAmount);
 
-        try {
-          const { supabase: helperSb } = await import("@/lib/supabase");
-          const { data: userData } = await helperSb.auth.getUser();
-          if (!userData.user) continue;
+      const payload = {
+        user_id: storeId,
+        shift_id: activeShift?.id || null,
+        invoiceNumber,
+        items: items.map((i) => ({ ...i, product_id: i.id })),
+        totalAmount: finalAmount,
+        totalItems: items.reduce((sum, i) => sum + i.quantity, 0),
+        paymentMethod: method,
+        paidAmount: effectivePaidAmount,
+        change: effectivePaidAmount - finalAmount,
+        customerId: selectedCustomerId || null,
+        txDiscount: txDiscountAmount,
+        discountAmount: txDiscountAmount,
+        taxAmount: taxAmount,
+        kasirName: user?.full_name,
+      };
 
-          // Fetch full profile to get owner_id
-          const { data: profile } = await helperSb
-            .from("users")
-            .select("owner_id")
-            .eq("id", userData.user.id)
-            .single();
-          const storeId = profile?.owner_id || userData.user.id;
+      if (!isOnline) {
+        await enqueueOfflineTransaction(payload);
+        toast.info("Transaksi disimpan offline");
+      } else {
+        await processSupabaseCheckout(payload);
+      }
 
-          // Execute Supabase checkout logic directly
-          await processSupabaseCheckout({ ...payload, user_id: storeId });
-          await removeTransactionFromQueue(tx.temp_id);
-          successCount++;
-        } catch (e) {
-          console.error("Failed to sync queue item", tx.temp_id, e);
+      // Invalidate dashboard cache so latest sales data shows immediately
+      useDashboardStore.getState().invalidateCache();
+
+      // Reactive stock update: manually update local state and IndexedDB cache 
+      // This bypasses the 15-min TTL cache and ensures the UI is honest immediately.
+      const updatedProducts = products.map(p => {
+        const soldItem = items.find(item => item.id === p.id);
+        if (soldItem) {
+          return { ...p, stock: Math.max(0, p.stock - soldItem.quantity) };
         }
-      }
+        return p;
+      });
+      setProducts(updatedProducts);
+      saveProductsOffline(updatedProducts);
 
-      if (successCount > 0) {
-        toast.success(
-          `Berhasil sinkronisasi ${successCount} transaksi offline ke Server.`,
-        );
-      }
+      setLastInvoice(invoiceNumber);
+      lastCheckoutRef.current = { 
+        ...payload, 
+        storeName: user?.store_name,
+        receiptHeader: user?.receipt_header,
+        receiptFooter: user?.receipt_footer,
+        logoUrl: user?.logo_url
+      };
+      clearCart();
+      setPaidAmount("");
+      setTxDiscount("");
+      setSelectedCustomerId("");
+      setCheckoutModal(false);
+      setSuccessModal(true);
+      playAudio('checkout');
+      vibrate([50, 30, 100]); // Satisfaction haptic
+      loadData();
     } catch (err) {
-      console.error("Sync error:", err);
+      toast.error("Gagal memproses transaksi");
     } finally {
-      setSyncing(false);
-      loadData(); // reload products to get correct stock
+      setProcessing(false);
     }
   };
 
-  // Initialize Midtrans Snap SDK
+  // --- Keyboard Shortcuts ---
   useEffect(() => {
-    // --- MIDTRANS INTEGRATION TEMPORARILY DISABLED ---
-    /*
-        // const snapScript = "https://app.sandbox.midtrans.com/snap/snap.js";
-        // Use production url if you have production keys
-        const snapScript = "https://app.midtrans.com/snap/snap.js";
-        const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY;
-
-        if (clientKey) {
-            const script = document.createElement("script");
-            script.src = snapScript;
-            script.setAttribute("data-client-key", clientKey);
-            script.async = true;
-            document.body.appendChild(script);
-
-            return () => {
-                document.body.removeChild(script);
-            };
+    const handleKeyDown = (e) => {
+      // F2: Focus Search
+      if (e.key === 'F2') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+      
+      // F8: Open Checkout Modal
+      if (e.key === 'F8' && !checkoutModal && items.length > 0) {
+        e.preventDefault();
+        setCheckoutModal(true);
+        vibrate(15);
+      }
+      
+      // F9: Focus Paid Amount (only if modal is open and cash is selected)
+      if (e.key === 'F9' && checkoutModal && paymentMethod === 'cash') {
+        e.preventDefault();
+        paidAmountRef.current?.focus();
+      }
+      
+      // Enter: Submit Checkout (only if modal is open)
+      if (e.key === 'Enter' && checkoutModal) {
+        const isButton = e.target.tagName === 'BUTTON';
+        const isInput = e.target.tagName === 'INPUT';
+        
+        if (!isButton && (paymentMethod === 'qris' || (paymentMethod === 'cash' && changeValue >= 0))) {
+          e.preventDefault();
+          saveTransactionToDB(paymentMethod);
         }
-        */
-  }, []);
+      }
 
-  // Load held bills from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("warungku_held_bills");
-      if (saved) setHeldBills(JSON.parse(saved));
-    } catch (e) {}
-  }, []);
-
-  const saveHeldBills = (bills) => {
-    setHeldBills(bills);
-    localStorage.setItem("warungku_held_bills", JSON.stringify(bills));
-  };
-
-  const holdCurrentBill = () => {
-    if (items.length === 0) return;
-    const bill = {
-      id: Date.now(),
-      items: items,
-      customerId: selectedCustomerId,
-      timestamp: new Date().toISOString(),
-      total: getTotal(),
+      // Esc: Close Modals
+      if (e.key === 'Escape') {
+        if (checkoutModal) setCheckoutModal(false);
+        if (scannerModal) setScannerModal(false);
+        if (heldModal) setHeldModal(false);
+        if (successModal) setSuccessModal(false);
+      }
     };
-    const updated = [bill, ...heldBills].slice(0, 10);
-    saveHeldBills(updated);
-    clearCart();
-    setSelectedCustomerId("");
-  };
 
-  const recallBill = (bill) => {
-    clearCart();
-    setItems(bill.items);
-    setSelectedCustomerId(bill.customerId || "");
-    const updated = heldBills.filter((b) => b.id !== bill.id);
-    saveHeldBills(updated);
-    setHoldModal(false);
-  };
-
-  const deleteHeldBill = (billId) => {
-    const updated = heldBills.filter((b) => b.id !== billId);
-    saveHeldBills(updated);
-  };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [checkoutModal, scannerModal, heldModal, successModal, items, paymentMethod, changeValue]);
 
   const loadData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
       if (navigator.onLine) {
-        // Cashiers should load products from their owner's ID
         const storeId = user.owner_id || user.id;
 
-        // Fetch from Supabase
-        const [productsRes, categoriesRes, customersRes, userRes] =
-          await Promise.all([
-            supabase
-              .from("products")
-              .select("*")
-              .eq("user_id", storeId)
-              .eq("is_active", true)
-              .order("name"),
-            supabase
-              .from("categories")
-              .select("*")
-              .eq("user_id", storeId)
-              .order("name"),
-            supabase
-              .from("customers")
-              .select("*")
-              .eq("user_id", storeId)
-              .order("name"),
-            supabase
-              .from("users")
-              .select("tax_rate")
-              .eq("id", storeId)
-              .single(),
-          ]);
+        // ✅ Check IndexedDB TTL cache first (15 min)
+        const cachedAt = parseInt(localStorage.getItem(PRODUCT_CACHE_KEY) || '0');
+        const isFresh = Date.now() - cachedAt < PRODUCT_CACHE_TTL;
 
-        if (productsRes.error) throw productsRes.error;
+        if (isFresh) {
+          // Serve from IndexedDB cache
+          const [offlineProd, offlineCust, offlineCats] = await Promise.all([
+            getProductsOffline(),
+            getCustomersOffline(),
+            getCategoriesOffline(),
+          ]);
+          if (offlineProd.length > 0) {
+            setProducts(offlineProd);
+            setCustomers(offlineCust);
+            setCategories(offlineCats);
+            // Still fetch tax_rate (lightweight, non-cached)
+            const { data: userRes } = await supabase.from('users').select('tax_rate').eq('id', storeId).single();
+            if (userRes?.tax_rate) setTaxRate(parseFloat(userRes.tax_rate));
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Cache miss or expired — fetch fresh from Supabase
+        const [productsRes, categoriesRes, customersRes, userRes] = await Promise.all([
+          supabase.from("products").select("*").eq("user_id", storeId).eq("is_active", true).order("name"),
+          supabase.from("categories").select("*").eq("user_id", storeId).order("name"),
+          supabase.from("customers").select("*").eq("user_id", storeId).order("name"),
+          supabase.from("users").select("tax_rate").eq("id", storeId).single(),
+        ]);
+
         setProducts(productsRes.data || []);
         setCategories(categoriesRes.data || []);
         setCustomers(customersRes.data || []);
-        if (userRes.data?.tax_rate)
-          setTaxRate(parseFloat(userRes.data.tax_rate));
+        if (userRes.data?.tax_rate) setTaxRate(parseFloat(userRes.data.tax_rate));
 
-        // Cache for offline
+        // Save to IndexedDB + update TTL timestamp
         saveProductsOffline(productsRes.data || []);
         saveCustomersOffline(customersRes.data || []);
+        saveCategoriesOffline(categoriesRes.data || []);
+        localStorage.setItem(PRODUCT_CACHE_KEY, String(Date.now()));
       } else {
-        // Load from IDB
-        const offlineProd = await getProductsOffline();
-        const offlineCust = await getCustomersOffline();
+        const [offlineProd, offlineCust, offlineCats] = await Promise.all([
+            getProductsOffline(),
+            getCustomersOffline(),
+            getCategoriesOffline(),
+        ]);
         setProducts(offlineProd);
         setCustomers(offlineCust);
-        // Categories can be extracted from products locally
-        const extractedCategories = [
-          ...new Set(offlineProd.map((p) => p.category)),
-        ]
-          .filter(Boolean)
-          .map((cat, i) => ({ id: i, name: cat }));
-        setCategories(extractedCategories);
+        setCategories(offlineCats);
       }
     } catch (err) {
-      console.error("Error loading data:", err);
-      // Fallback to offline if unexpected network failure
-      const offlineProd = await getProductsOffline();
-      setProducts(offlineProd);
+      console.error("[Cashier] loadData Error:", err);
     } finally {
       setLoading(false);
     }
@@ -362,25 +587,17 @@ export default function CashierPage() {
     try {
       setProcessing(true);
       const storeId = user.owner_id || user.id;
-
-      const { data, error } = await supabase
-        .from("shifts")
-        .insert({
-          store_id: storeId,
-          user_id: user.id,
-          starting_cash: parseInt(startingCash),
-          status: "open",
-        })
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from("shifts").insert({
+        store_id: storeId,
+        user_id: user.id,
+        starting_cash: parseInt(startingCash),
+        status: "open",
+      }).select().single();
       if (error) throw error;
-
       setActiveShift(data);
       setOpenShiftModal(false);
-      toast.success("Shift berhasil dibuka");
+      toast.success("Shift dibuka");
     } catch (error) {
-      console.error("Open shift error:", error);
       toast.error("Gagal membuka shift");
     } finally {
       setProcessing(false);
@@ -388,1078 +605,482 @@ export default function CashierPage() {
   };
 
   const handleCloseShift = async () => {
-    if (!activeShift || !actualCash) return;
+    if (!activeShift) return;
     try {
       setProcessing(true);
+      // Hitung tunai yang masuk dari transaksi selama shift ini
+      const { data: txs, error: txError } = await supabase
+        .from('transactions')
+        .select('paid_amount, change_amount, payment_method, total_amount')
+        .eq('shift_id', activeShift.id)
+        .eq('payment_method', 'cash')
+        .eq('status', 'completed');
+        
+      if (txError) throw txError;
+      
+      let totalTunaiMasuk = 0;
+      if (txs) {
+        // Tunai aktual yang diterima adalah total uang tunai yang masuk (atau pakai paid - change)
+        totalTunaiMasuk = txs.reduce((sum, tx) => sum + (tx.total_amount || 0), 0);
+      }
+      
+      const expected = activeShift.starting_cash + totalTunaiMasuk;
+      const actual = parseInt(actualCash || "0");
+      const diff = actual - expected;
+      const end_time = new Date().toISOString();
 
-      // Calculate expected cash (Starting cash + all cash transactions during this shift)
-      const { data: txs } = await supabase
-        .from("transactions")
-        .select("paid_amount, change")
-        .eq("shift_id", activeShift.id)
-        .eq("payment_method", "cash")
-        .eq("status", "completed");
-
-      const cashEarned = (txs || []).reduce(
-        (sum, tx) => sum + (tx.paid_amount - tx.change),
-        0,
-      );
-      const expectedCash = Number(activeShift.starting_cash) + cashEarned;
-
-      const { error } = await supabase
-        .from("shifts")
-        .update({
-          end_time: new Date().toISOString(),
-          actual_cash: parseInt(actualCash),
-          expected_cash: expectedCash,
-          status: "closed",
-        })
-        .eq("id", activeShift.id);
+      const { error } = await supabase.from('shifts').update({
+        status: 'closed',
+        end_time: end_time,
+        expected_cash: expected,
+        actual_cash: actual
+      }).eq('id', activeShift.id);
 
       if (error) throw error;
-
+      
+      toast.success("Shift berhasil ditutup");
+      
+      // Print Laporan Shift
+      printShiftReport({
+        storeName: user?.store_name,
+        kasirName: user?.full_name,
+        logoUrl: user?.logo_url,
+        shiftId: activeShift.id,
+        startTime: dayjs(activeShift.start_time).format('DD/MM/YYYY HH:mm'),
+        endTime: dayjs(end_time).format('DD/MM/YYYY HH:mm'),
+        startingCash: activeShift.starting_cash,
+        expectedCash: expected,
+        actualCash: actual,
+        difference: diff
+      });
+      
       setActiveShift(null);
       setCloseShiftModal(false);
       setActualCash("");
-      toast.success("Shift berhasil ditutup");
-      if (user?.role === "cashier") {
-        setOpenShiftModal(true); // Memaksa login shift baru jika di cashier
-      }
-    } catch (error) {
-      console.error("Close shift error:", error);
+      setOpenShiftModal(true); // Force open again since shift closed
+    } catch (err) {
       toast.error("Gagal menutup shift");
     } finally {
       setProcessing(false);
     }
   };
 
-  const processSupabaseCheckout = async (payload) => {
-    const txPayload = {
-      user_id: payload.user_id,
-      invoice_number: payload.invoiceNumber,
-      subtotal: payload.items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      ),
-      discount_amount: payload.txDiscount || 0,
-      tax_amount: payload.taxAmount || 0,
-      total_amount: payload.totalAmount,
-      total_items: payload.items.reduce((sum, item) => sum + item.quantity, 0),
-      payment_method: payload.paymentMethod,
-      status: "completed",
-      customer_id: payload.customerId || null,
-    };
-
-    let { data: transaction, error: txError } = await supabase
-      .from("transactions")
-      .insert(txPayload)
-      .select()
-      .single();
-
-    if (
-      txError &&
-      typeof txError.message === "string" &&
-      txError.message.includes("customer_id")
-    ) {
-      delete txPayload.customer_id;
-      const retry = await supabase
-        .from("transactions")
-        .insert(txPayload)
-        .select()
-        .single();
-      transaction = retry.data;
-      txError = retry.error;
-    }
-    if (txError) throw txError;
-
-    const txItems = payload.items.map((item) => ({
-      transaction_id: transaction.id,
-      product_id: item.product_id || item.id,
-      product_name: item.name || item.product_name,
-      quantity: item.quantity,
-      price: item.price,
-      cost_price: item.cost_price || item.costPrice || 0,
-      subtotal: item.price * item.quantity,
-    }));
-
-    const { error: itemsError } = await supabase
-      .from("transaction_items")
-      .insert(txItems);
-    if (itemsError) throw itemsError;
-
-    for (const item of payload.items) {
-      const { data: currentProduct } = await supabase
-        .from("products")
-        .select("stock")
-        .eq("id", item.product_id || item.id)
-        .single();
-      if (currentProduct) {
-        const newStock = currentProduct.stock - item.quantity;
-        await supabase
-          .from("products")
-          .update({ stock: newStock, updated_at: new Date().toISOString() })
-          .eq("id", item.product_id || item.id);
-        // Also update local state
-        const currentLocalProd = products.find(
-          (p) => p.id === (item.product_id || item.id),
-        );
-        if (currentLocalProd) currentLocalProd.stock = newStock;
-
-        await supabase.from("stock_history").insert({
-          product_id: item.product_id || item.id,
-          user_id: payload.user_id,
-          type: "sale",
-          quantity: -item.quantity,
-          stock_before: currentProduct.stock,
-          stock_after: newStock,
-          notes: `Penjualan - ${payload.invoiceNumber}`,
-        });
-      }
-    }
-
-    const earnedPoints = Math.floor(payload.totalAmount / 10000);
-    if (payload.customerId && earnedPoints > 0) {
-      const { data: customer } = await supabase
-        .from("customers")
-        .select("total_points")
-        .eq("id", payload.customerId)
-        .single();
-      if (customer) {
-        await supabase
-          .from("customers")
-          .update({ total_points: (customer.total_points || 0) + earnedPoints })
-          .eq("id", payload.customerId);
-      }
-    }
-    return true;
-  };
-
-  // Keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === "F2") {
-        e.preventDefault();
-        document.getElementById("cashier-search")?.focus();
-      }
-      if (e.key === "F9" && items.length > 0) {
-        e.preventDefault();
-        setCheckoutModal(true);
-      }
-      if (e.key === "Escape") {
-        setCheckoutModal(false);
-        setSuccessModal(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [items.length]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      const matchSearch = p.name
-        .toLowerCase()
-        .includes(debouncedSearch.toLowerCase());
-      const matchCategory =
-        selectedCategory === "all" ||
-        p.category_id === parseInt(selectedCategory);
+      const matchSearch = (p.name || '').toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchCategory = selectedCategory === "all" || p.category_id === parseInt(selectedCategory);
       return matchSearch && matchCategory;
     });
   }, [products, debouncedSearch, selectedCategory]);
 
-  // Calculate discounted price for a product
-  const getDiscountedPrice = (product) => {
-    if (!product.discount || product.discount <= 0) return product.price;
-    // Check scheduled discount dates
-    if (product.discount_start || product.discount_end) {
-      const now = new Date();
-      if (product.discount_start && new Date(product.discount_start) > now)
-        return product.price;
-      if (product.discount_end && new Date(product.discount_end) < now)
-        return product.price;
-    }
-    if (product.discount_type === "percentage") {
-      return Math.round(product.price * (1 - product.discount / 100));
-    }
-    return Math.max(0, product.price - product.discount);
+  const getDiscountedPrice = (p) => {
+    if (!p.discount || p.discount <= 0) return p.price;
+    if (p.discount_type === "percentage") return Math.round(p.price * (1 - p.discount / 100));
+    return Math.max(0, p.price - p.discount);
   };
 
-  const totalAmount = getTotal();
-  const totalItems = getTotalItems();
-  const txDiscountAmount =
-    txDiscountType === "percentage"
-      ? Math.round((totalAmount * parseInt(txDiscount || "0")) / 100)
-      : parseInt(txDiscount || "0");
-
-  // Tax Calculation
-  const taxAmount = Math.round(
-    (totalAmount - txDiscountAmount) * (taxRate / 100),
-  );
-
-  const finalAmount = Math.max(0, totalAmount - txDiscountAmount + taxAmount);
-  const change = parseInt(paidAmount || "0") - finalAmount;
-
-  // Handle Barcode Scan Success
-  const handleScanSuccess = useCallback(
-    (decodedText) => {
-      // Find product by SKU or name (assuming barcode is SKU)
-      const product = products.find((p) => p.sku === decodedText);
-
-      if (product) {
-        if (product.stock > 0) {
-          const discountedPrice = getDiscountedPrice(product);
-          addItem({ ...product, price: discountedPrice });
-
-          // Play success sound (optional enhancement)
-          try {
-            const audio = new Audio("/success-beep.mp3"); // Optional: if sound file exists
-            audio.play().catch(() => {});
-          } catch (e) {}
+  const handleScanSuccess = useCallback((text) => {
+    const p = products.find(p => p.sku === text);
+    if (p) {
+      if (p.stock > 0) {
+        const success = addItem({ ...p, price: getDiscountedPrice(p) });
+        if (success) {
+          playAudio('item_added');
         } else {
-          alert(`Stok produk habis: ${product.name}`);
+          toast.warning(`Stok ${p.name} sudah tidak mencukupi!`);
         }
       } else {
-        console.log("Barcode not found:", decodedText);
-        toast.warning(`Produk dengan kode "${decodedText}" tidak ditemukan.`);
+        toast.warning(`Stok ${p.name} habis`);
       }
-    },
-    [products, addItem],
-  );
+    }
+  }, [products, addItem, toast]);
 
-  // Initialize/Cleanup Scanner
   useEffect(() => {
     if (scannerModal) {
-      // Need a slight delay to ensure the DOM element exists
       const timeout = setTimeout(() => {
-        const scanner = new Html5QrcodeScanner(
-          "cashier-barcode-reader",
-          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-          /* verbose= */ false,
-        );
-        scanner.render(handleScanSuccess, (err) => {
-          // Ignore errors as they happen frequently per frame when no barcode is in sight
-        });
+        const scanner = new Html5QrcodeScanner("cashier-barcode-reader", { fps: 10, qrbox: 250 });
+        scanner.render(handleScanSuccess, () => {});
         scannerRef.current = scanner;
       }, 100);
-
       return () => {
         clearTimeout(timeout);
-        // FIX: use scannerRef.current so cleanup always gets the right instance
-        if (scannerRef.current) {
-          scannerRef.current.clear().catch((error) => {
-            console.error("Failed to clear html5QrcodeScanner. ", error);
-          });
-          scannerRef.current = null;
-        }
+        if (scannerRef.current) scannerRef.current.clear().catch(e => console.error(e));
       };
     }
   }, [scannerModal, handleScanSuccess]);
 
-  const saveTransactionToDB = async (paymentMethod = "cash") => {
-    try {
-      const invoiceNumber = `INV-${Date.now()}`;
-      const totalCOGS = items.reduce(
-        (sum, item) => sum + (item.cost_price || 0) * item.quantity,
-        0,
-      );
-      const isCash = paymentMethod === "cash";
-
-      // Cashiers should save transactions to their owner's account
-      const storeId = user.owner_id || user.id;
-
-      const payload = {
-        user_id: storeId,
-        shift_id: activeShift?.id || null,
-        invoiceNumber,
-        items: items.map((i) => ({ ...i, product_id: i.id })),
-        totalAmount: finalAmount,
-        paymentMethod,
-        paidAmount: isCash ? parseInt(paidAmount || "0") : finalAmount,
-        change: isCash ? parseInt(paidAmount || "0") - finalAmount : 0,
-        customerId: selectedCustomerId || null,
-        txDiscount: txDiscountAmount, // Assuming txDiscountAmount is the final calculated discount
-        receiptHeader: user?.receipt_header,
-        receiptFooter: user?.receipt_footer,
-        costPrice: totalCOGS,
-        createdAt: new Date().toISOString(),
-      };
-
-      if (!isOnline) {
-        // OFFLINE QUEUE
-        await enqueueOfflineTransaction(payload);
-
-        // Optimistically clear cart visually and pretend success
-        const offlineSuccessData = {
-          storeName: user?.store_name,
-          kasirName: user?.full_name, // FIX: send logged-in cashier name
-          receiptHeader: user?.receipt_header,
-          receiptFooter: user?.receipt_footer,
-          customerName:
-            customers.find((c) => c.id.toString() === selectedCustomerId)
-              ?.name || "",
-          invoiceNumber,
-          items: items.map((i) => ({
-            product_name: i.name,
-            quantity: i.quantity,
-            price: i.price,
-          })),
-          totalAmount: finalAmount,
-          taxAmount: taxAmount, // FIX: include taxAmount for offline receipt
-          totalItems,
-          paymentMethod,
-          paidAmount: isCash ? parseInt(paidAmount || "0") : finalAmount,
-          change: isCash ? parseInt(paidAmount || "0") - finalAmount : 0,
-          createdAt: new Date(),
-          isOffline: true,
-        };
-        setTransactionSuccessData(offlineSuccessData);
-        lastCheckoutRef.current = offlineSuccessData; // FIX: fill ref for print/WA
-
-        // Adjust local state stock visually so user can't double-sell offline
-        const updatedProds = products.map((p) => {
-          const cartItem = items.find((i) => i.id === p.id);
-          if (cartItem) return { ...p, stock: p.stock - cartItem.quantity };
-          return p;
-        });
-        setProducts(updatedProds);
-        saveProductsOffline(updatedProds);
-
-        setLastInvoice(invoiceNumber);
-        clearCart();
-        setPaidAmount("");
-        setTxDiscount("");
-        setSelectedCustomerId("");
-        setCheckoutModal(false);
-        setSuccessModal(true);
-        return;
-      }
-
-      // ONLINE SAVING
-      await processSupabaseCheckout(payload);
-
-      const successData = {
-        storeName: user?.store_name,
-        kasirName: user?.full_name, // FIX: send logged-in cashier name
-        receiptHeader: user?.receipt_header,
-        receiptFooter: user?.receipt_footer,
-        logoUrl: user?.logo_url,
-        customerName:
-          customers.find((c) => c.id.toString() === selectedCustomerId)?.name ||
-          "",
-        invoiceNumber,
-        items: items.map((i) => ({
-          product_name: i.name,
-          quantity: i.quantity,
-          price: i.price,
-        })),
-        totalAmount: finalAmount,
-        taxAmount: taxAmount, // FIX: include taxAmount so receipt shows PPN
-        totalItems,
-        paymentMethod,
-        paidAmount: isCash ? parseInt(paidAmount || "0") : finalAmount,
-        change: isCash ? parseInt(paidAmount || "0") - finalAmount : 0,
-        createdAt: new Date(),
-        isOffline: false,
-      };
-      setTransactionSuccessData(successData);
-      lastCheckoutRef.current = successData; // FIX: fill ref so print/WA buttons work
-
-      setLastInvoice(invoiceNumber);
-      clearCart();
-      setPaidAmount("");
-      setTxDiscount("");
-      setSelectedCustomerId("");
-      setCheckoutModal(false);
-      setSuccessModal(true);
-      loadData(); // refresh products
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  const handleCheckout = async () => {
-    if (processing) return;
-    setProcessing(true);
-
-    try {
-      await saveTransactionToDB(paymentMethod);
-    } catch (err) {
-      console.error("Checkout error:", err);
-      toast.error("Gagal memproses transaksi: " + err.message);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // --- Keyboard Shortcuts ---
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // F4: Focus search
-      if (e.key === "F4") {
-        e.preventDefault();
-        document.getElementById("cashier-search")?.focus();
-      }
-
-      // F8: Trigger checkout (if cart has items and no modals are open)
-      if (e.key === "F8") {
-        e.preventDefault();
-        if (
-          items.length > 0 &&
-          !checkoutModal &&
-          !successModal &&
-          !scannerModal &&
-          !holdModal
-        ) {
-          setPaymentMethod("cash");
-          setPaidAmount("");
-          setCheckoutModal(true);
-          setTimeout(
-            () => document.getElementById("paid-amount-input")?.focus(),
-            100,
-          );
-        }
-      }
-
-      // Escape: Close modals or clear search
-      if (e.key === "Escape") {
-        if (checkoutModal) setCheckoutModal(false);
-        else if (scannerModal) setScannerModal(false);
-        else if (holdModal) setHoldModal(false);
-        else if (successModal) {
-          setSuccessModal(false);
-          setLastInvoice("");
-        } else if (document.activeElement.id === "cashier-search") {
-          setSearch("");
-          document.getElementById("cashier-search").blur();
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    items.length,
-    checkoutModal,
-    successModal,
-    scannerModal,
-    holdModal,
-    setSearch,
-  ]);
-
   return (
-    <div className="animate-fade-in -mx-4 md:-mx-6 -mt-4 md:-mt-6">
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] md:h-[calc(100vh-73px)] relative overflow-hidden">
-        {/* Left: Product Grid */}
-        <div className="flex-1 p-4 md:p-6 overflow-y-auto w-full">
-          {/* Search & Filter */}
-          <div className="flex flex-col gap-3 mb-4">
-            <div className="flex gap-2 w-full lg:max-w-md">
-              <div className="relative flex-1">
-                <Search
-                  size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                />
-                <input
-                  id="cashier-search"
-                  type="text"
-                  placeholder="Cari produk... (F4)"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                />
-              </div>
-              <Button
-                variant="secondary"
-                className="flex-shrink-0"
-                icon={ScanLine}
-                onClick={() => setScannerModal(true)}
-              >
-                <span className="hidden sm:inline">Scan</span>
-              </Button>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              <button
-                onClick={() => setSelectedCategory("all")}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors cursor-pointer",
-                  selectedCategory === "all"
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white",
-                )}
-              >
-                Semua
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(String(cat.id))}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors cursor-pointer",
-                    selectedCategory === String(cat.id)
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white",
-                  )}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Product Grid */}
-          {loading ? (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="skeleton h-40 rounded-2xl" />
-              ))}
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-20 text-slate-500">
-              <p className="text-lg mb-1">Tidak ada produk ditemukan</p>
-              <p className="text-sm">
-                Coba ubah pencarian atau filter kategori
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3 xl:gap-4">
-              {filteredProducts.map((product) => {
-                const inCart = items.find((i) => i.id === product.id);
-                const outOfStock = product.stock <= 0;
-                const discountedPrice = getDiscountedPrice(product);
-                const hasDiscount = product.discount > 0;
-
-                return (
-                  <button
-                    key={product.id}
-                    onClick={() =>
-                      !outOfStock &&
-                      addItem({ ...product, price: discountedPrice })
-                    }
-                    disabled={outOfStock}
-                    className={cn(
-                      "relative p-3 sm:p-4 rounded-xl border text-left transition-all duration-200 cursor-pointer group flex flex-col items-center",
-                      outOfStock
-                        ? "bg-slate-900 border-slate-800 opacity-60 cursor-not-allowed grayscale-[50%]"
-                        : inCart
-                          ? "bg-indigo-500/10 border-indigo-500 ring-1 ring-inset ring-indigo-500/50"
-                          : "bg-slate-900 border-slate-800 hover:border-indigo-500/50 hover:bg-slate-800/50 hover:shadow-sm",
-                    )}
-                  >
-                    {/* Product Image */}
-                    <div className="w-full aspect-square rounded-lg bg-slate-800/50 mb-3 overflow-hidden p-3 flex items-center justify-center transition-transform group-hover:scale-105 duration-300">
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt={product.name}
-                          className="w-full h-full object-contain drop-shadow-md"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package
-                            size={32}
-                            className="text-slate-600 group-hover:text-indigo-400 transition-colors"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 w-full flex flex-col justify-between text-center mt-1">
-                      <div className="w-full overflow-hidden">
-                        <p
-                          className="text-sm sm:text-base font-semibold text-white truncate w-full"
-                          title={product.name}
-                        >
-                          {product.name}
-                        </p>
-
-                        {/* Price with discount */}
-                        {hasDiscount ? (
-                          <div className="mt-1.5 w-full flex flex-col items-center">
-                            <p className="text-base sm:text-lg font-bold text-emerald-400 tracking-tight">
-                              {formatRupiah(discountedPrice)}
-                            </p>
-                            <p className="text-xs text-slate-500 line-through truncate mt-0.5">
-                              {formatRupiah(product.price)}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="mt-1.5 w-full">
-                            <p className="text-base sm:text-lg font-bold text-indigo-400 tracking-tight">
-                              {formatRupiah(product.price)}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-700/50">
-                        <span
-                          className={cn(
-                            "text-[10px] px-2 py-0.5 rounded-full font-medium border",
-                            product.stock <= 5
-                              ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                              : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-                          )}
-                        >
-                          Stok: {product.stock}
-                        </span>
-                        {hasDiscount && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            {product.discount_type === "percentage"
-                              ? `${product.discount}%`
-                              : formatRupiah(product.discount)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {inCart && (
-                      <div className="absolute -top-2 -right-2 w-7 h-7 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-indigo-500/40 animate-scale-in">
-                        {inCart.quantity}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Cart Overlay */}
-        <div
-          className={cn(
-            "fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden",
-            isCartOpen
-              ? "opacity-100 pointer-events-auto"
-              : "opacity-0 pointer-events-none",
-          )}
-          onClick={() => setIsCartOpen(false)}
-        />
-
-        {/* Right: Cart Panel (Drawer on Mobile, Static on Desktop) */}
-        <div
-          className={cn(
-            "fixed inset-y-0 right-0 z-50 w-full sm:w-[400px] bg-slate-850 shadow-2xl border-l border-slate-800 flex flex-col transform transition-transform duration-300 ease-in-out lg:relative lg:transform-none lg:w-96 lg:shadow-none lg:z-0 lg:flex lg:translate-x-0",
-            isCartOpen ? "translate-x-0" : "translate-x-full",
-          )}
-        >
-          {/* Handle for mobile to close cart easily */}
-          <div
-            className="lg:hidden flex justify-center py-2 bg-slate-850/80 active:bg-slate-800 cursor-pointer border-b border-slate-800"
-            onClick={() => setIsCartOpen(false)}
-          >
-            <div className="w-12 h-1.5 bg-slate-700 rounded-full" />
-          </div>
-
-          {/* Cart Header */}
-          <div className="p-4 border-b border-slate-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={20} className="text-indigo-400" />
-                <h3 className="font-semibold text-white">Keranjang</h3>
-                {totalItems > 0 && (
-                  <Badge variant="primary">{totalItems} item</Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                {activeShift && (
-                  <button
-                    onClick={() => setCloseShiftModal(true)}
-                    className="flex items-center gap-1 text-xs text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-1.5 rounded-lg font-medium transition-colors cursor-pointer mr-1"
-                    title="Tutup Shift"
-                  >
-                    <LogOut size={14} />
-                    Tutup Shift
-                  </button>
-                )}
-                {heldBills.length > 0 && (
-                  <button
-                    onClick={() => setHoldModal(true)}
-                    className="flex items-center gap-1 text-xs text-amber-500 bg-amber-500/10 hover:bg-amber-500/20 px-2 py-1.5 rounded-lg font-medium transition-colors cursor-pointer"
-                    title="Daftar Hold"
-                  >
-                    <History size={14} />
-                    Hold ({heldBills.length})
-                  </button>
-                )}
-                {items.length > 0 && (
-                  <button
-                    onClick={clearCart}
-                    className="text-red-400 hover:bg-red-400/10 p-2 rounded-lg transition-colors cursor-pointer"
-                    title="Kosongkan Keranjang"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {items.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 opacity-70">
-                <div className="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center mb-4 ring-1 ring-white/10">
-                  <ShoppingCart size={32} className="text-slate-400" />
+    <div className="flex flex-col lg:flex-row items-start min-h-full lg:h-full h-auto bg-[var(--surface-0)] relative">
+      {/* Product Content Area - Local animation so overlay isn't trapped */}
+      <div className="flex-1 flex flex-col min-w-0 h-full lg:overflow-hidden animate-fade-in">
+        {/* Categories Bar - Glassmorphism */}
+        <div className="bg-[var(--surface-1)] border-b border-[var(--surface-border)] px-4 py-3 flex flex-col gap-3 w-full">
+            {/* Top Row: Search & Actions */}
+            <div className="flex items-center justify-between gap-3 w-full">
+                <div className="relative flex-1 group">
+                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors" />
+                    <input
+                        ref={searchRef}
+                        id="cashier-search"
+                        type="text"
+                        placeholder="Cari produk... (F2)"
+                        className="w-full bg-[var(--surface-2)] border border-[var(--surface-border)] rounded-2xl pl-11 pr-4 py-2.5 text-[14px] text-[var(--text-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/10 focus:border-[var(--color-primary)]/50 outline-none transition-all placeholder:text-[var(--text-muted)] shadow-inner"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
                 </div>
-                <p className="text-sm font-medium">Keranjang kosong</p>
-                <p className="text-xs mt-1">Pilih produk untuk menambahkan</p>
-              </div>
-            ) : (
-              items.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-xl bg-slate-900 border border-slate-800 animate-fade-in"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-base font-semibold text-white truncate">
-                        {item.name}
-                      </p>
-                      <p className="text-sm font-medium text-slate-400">
-                        {formatRupiah(item.price)}
-                      </p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="hidden sm:flex items-center bg-[var(--surface-2)] p-1 rounded-xl border border-[var(--surface-border)]">
+                        <button onClick={() => setViewMode("grid")} className={cn("p-2 rounded-lg transition-all", viewMode === "grid" ? "bg-[var(--surface-1)] text-[var(--color-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]")}><LayoutGrid size={16} /></button>
+                        <button onClick={() => setViewMode("list")} className={cn("p-2 rounded-lg transition-all", viewMode === "list" ? "bg-[var(--surface-1)] text-[var(--color-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]")}><List size={16} /></button>
                     </div>
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors cursor-pointer mt-0.5"
+                    {activeShift && (
+                        <button 
+                            onClick={() => setCloseShiftModal(true)} 
+                            className="px-3 py-2.5 rounded-lg bg-rose-500/10 text-rose-600 font-bold border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all shadow-sm active:scale-90 text-[10px] uppercase tracking-widest hidden sm:block"
+                        >
+                            Tutup Shift
+                        </button>
+                    )}
+                    <button 
+                        onClick={() => setScannerModal(true)} 
+                        className="p-2.5 rounded-xl bg-[var(--surface-2)] text-[var(--text-primary)] border border-[var(--surface-border)] hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)] transition-all shadow-sm active:scale-90"
                     >
-                      <X size={18} />
+                        <ScanLine size={18} />
                     </button>
-                  </div>
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => decrementItem(item.id)}
-                        className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-white transition-colors cursor-pointer"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="text-sm font-medium text-white w-8 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => incrementItem(item.id)}
-                        disabled={item.quantity >= item.stock}
-                        className="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-white transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                    <p className="text-sm font-semibold text-white">
-                      {formatRupiah(item.price * item.quantity)}
-                    </p>
-                  </div>
                 </div>
-              ))
-            )}
-          </div>
-
-          {/* Cart Footer */}
-          {items.length > 0 && (
-            <div className="p-4 border-t border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Subtotal</span>
-                <span className="text-lg font-bold text-white">
-                  {formatRupiah(totalAmount)}
-                </span>
-              </div>
-
-              {/* Transaction Discount */}
-              <div className="flex items-center gap-2">
-                <Tag size={14} className="text-amber-400 flex-shrink-0" />
-                <input
-                  type="number"
-                  value={txDiscount}
-                  onChange={(e) => setTxDiscount(e.target.value)}
-                  placeholder="Diskon"
-                  className="flex-1 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
-                />
-                <select
-                  value={txDiscountType}
-                  onChange={(e) => setTxDiscountType(e.target.value)}
-                  className="bg-slate-800/50 border border-slate-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none cursor-pointer"
-                >
-                  <option value="fixed">Rp</option>
-                  <option value="percentage">%</option>
-                </select>
-              </div>
-
-              {txDiscountAmount > 0 && (
-                <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-amber-400">Diskon</span>
-                  <span className="text-amber-400">
-                    -{formatRupiah(txDiscountAmount)}
-                  </span>
-                </div>
-              )}
-
-              {taxAmount > 0 && (
-                <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-slate-400">Pajak (PPN {taxRate}%)</span>
-                  <span className="text-slate-300">
-                    +{formatRupiah(taxAmount)}
-                  </span>
-                </div>
-              )}
-
-              <div className="border-t border-slate-700 pt-2 flex items-center justify-between mb-4">
-                <span className="text-white font-medium">Total</span>
-                <span className="text-xl font-bold text-white">
-                  {formatRupiah(finalAmount)}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="secondary"
-                  className="px-3 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/50"
-                  onClick={holdCurrentBill}
-                  title="Tahan Pesanan (Hold Bill)"
-                >
-                  <History size={18} />
-                </Button>
-                <Button
-                  size="lg"
-                  className="flex-1 text-base"
-                  onClick={() => setCheckoutModal(true)}
-                >
-                  Bayar (F8)
-                </Button>
-              </div>
             </div>
-          )}
+
+            {/* Bottom Row: Categories */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 w-full scrollbar-none">
+                <CategoryItem cat={{ id: 'all', name: 'Semua' }} isActive={selectedCategory === 'all'} onClick={setSelectedCategory} />
+                {categories.map(cat => (
+                    <CategoryItem key={cat.id} cat={cat} isActive={selectedCategory === String(cat.id)} onClick={setSelectedCategory} />
+                ))}
+            </div>
+        </div>
+
+        {/* Product Grid - Consistently visible scroller handled by AppShell */}
+        <div className="w-full h-auto lg:h-full lg:overflow-y-auto p-3 sm:p-4 pb-24 sm:pb-20 lg:pb-4 custom-scrollbar">
+            {loading ? (
+                <div className="grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {[...Array(12)].map((_, i) => <div key={i} className="aspect-square skeleton rounded-2xl" />)}
+                </div>
+            ) : filteredProducts.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-30">
+                    <Package size={40} className="mb-3 text-[var(--text-muted)]" />
+                    <p className="text-xs font-medium">Produk tidak ditemukan</p>
+                </div>
+            ) : (
+                <div className={cn(
+                    viewMode === "grid" 
+                    ? "grid grid-cols-2 min-[600px]:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4" 
+                    : "space-y-2"
+                )}>
+                    {filteredProducts.map(p => (
+                        <ProductCard 
+                            key={p.id} 
+                            p={p} 
+                            viewMode={viewMode} 
+                            quantity={items.find(item => item.id === p.id)?.quantity || 0}
+                            onAdd={(prod) => {
+                                if (prod.stock <= 0) {
+                                    toast.warning(`Stok ${prod.name} sudah habis!`);
+                                    playAudio('error');
+                                    vibrate([50, 50, 50]);
+                                    return;
+                                }
+                                const success = addItem(prod);
+                                if (success) {
+                                    playAudio('item_added');
+                                    vibrate(10);
+                                } else {
+                                    toast.warning(`Stok ${prod.name} sudah tidak mencukupi!`);
+                                }
+                            }} 
+                            formatRupiah={formatRupiah} 
+                        />
+                    ))}
+                </div>
+            )}
         </div>
       </div>
 
-      {/* Mobile Floating Action Button (Cart) */}
-      <div
-        className={cn(
-          "fixed bottom-6 inset-x-0 mx-auto w-fit z-30 transition-transform duration-300 lg:hidden pointer-events-none",
-          !isCartOpen && items.length > 0
-            ? "translate-y-0 opacity-100"
-            : "translate-y-20 opacity-0",
-        )}
-      >
-        <button
-          onClick={() => setIsCartOpen(true)}
-          className="flex items-center gap-3 px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full shadow-lg shadow-indigo-500/20 transition-all pointer-events-auto cursor-pointer border border-indigo-500/50"
-        >
-          <div className="flex items-center gap-2 font-bold">
-            <ShoppingCart size={20} />
-            <span>{totalItems} Item</span>
-          </div>
-          <div className="w-px h-5 bg-indigo-400/50" />
-          <span className="font-bold">{formatRupiahShort(totalAmount)}</span>
-        </button>
+      {/* Cart Backdrop - Mobile only */}
+      {cashierCartOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[60] lg:hidden backdrop-blur-sm transition-all duration-300" 
+          onClick={() => setCashierCartOpen(false)} 
+        />
+      )}
+
+      {/* Cart Sidebar - Digital Receipt Style */}
+      <div className={cn(
+        "fixed inset-y-0 right-0 lg:sticky lg:top-0 w-full sm:w-96 lg:w-[360px] xl:w-[400px] lg:h-[calc(100vh-64px)] bg-[var(--surface-1)] border-l border-[var(--surface-border)] flex flex-col z-[70] transition-transform duration-300 shadow-2xl lg:shadow-none",
+        cashierCartOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+      )}>
+        {/* Cart Header */}
+        <div className="h-14 border-b border-[var(--surface-border)] px-4 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-2">
+                <ShoppingCart size={16} className="text-[var(--color-primary)]" />
+                <h2 className="font-bold text-[13px] tracking-tight">KERANJANG</h2>
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-[10px] font-bold">
+                    {finalTotalItems}
+                </span>
+            </div>
+            <div className="flex items-center gap-1">
+                {heldTransactions.length > 0 && (
+                    <button 
+                        onClick={() => setHeldModal(true)} 
+                        className="relative p-2 text-amber-500 hover:bg-amber-500/5 rounded-lg transition-colors cursor-pointer" 
+                        title="Transaksi Ditahan"
+                    >
+                        <Clock size={16} />
+                        <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full border border-[var(--surface-1)]"></span>
+                    </button>
+                )}
+                {confirmClearCart ? (
+                    <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+                        <span className="text-[10px] text-[var(--text-muted)] font-bold whitespace-nowrap">Hapus Semua?</span>
+                        <button
+                            onClick={() => { clearCart(); setConfirmClearCart(false); vibrate([30, 20, 30]); playAudio('warning'); }}
+                            className="px-2.5 py-1 rounded-lg bg-rose-500 text-white text-[10px] font-black transition-all active:scale-90"
+                        >Ya</button>
+                        <button
+                            onClick={() => { setConfirmClearCart(false); vibrate(5); }}
+                            className="px-2.5 py-1 rounded-lg bg-[var(--surface-2)] border border-[var(--surface-border)] text-[10px] font-black transition-all active:scale-90"
+                        >Batal</button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => { setConfirmClearCart(true); vibrate(10); }}
+                        disabled={items.length === 0}
+                        className="p-2 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/5 rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Kosongkan"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                )}
+                <button onClick={() => setCashierCartOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)]"><X size={20} /></button>
+            </div>
+        </div>
+
+        {/* Customer Select - Minimal */}
+        <div className="px-4 py-2.5 border-b border-[var(--surface-border)] bg-[var(--surface-2)]/20">
+            <div className="flex items-center gap-2.5">
+                <Users size={14} className="text-[var(--text-muted)] shrink-0" />
+                <select
+                    className="flex-1 bg-transparent text-[12px] text-[var(--text-primary)] font-semibold focus:outline-none appearance-none cursor-pointer"
+                    value={selectedCustomerId}
+                    onChange={(e) => setSelectedCustomerId(e.target.value)}
+                >
+                    <option value="">Guest Pelanggan</option>
+                    {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <ChevronDown size={12} className="text-[var(--text-muted)]" />
+            </div>
+        </div>
+
+        {/* Cart Items List */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 sm:p-3 space-y-1.5 sm:space-y-2">
+            {items.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-20 px-8 text-center">
+                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-[var(--text-muted)] flex items-center justify-center mb-3">
+                        <ShoppingCart size={20} />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider">Belum ada item</p>
+                </div>
+            ) : (
+                items.map(item => (
+                    <CartItem 
+                        key={item.id} 
+                        item={item} 
+                        onIncrement={(id) => { 
+                            const success = incrementItem(id); 
+                            if (success) {
+                                vibrate(10); 
+                            } else {
+                                toast.warning("Stok sudah tidak mencukupi!");
+                            }
+                        }} 
+                        onDecrement={(id) => { decrementItem(id); vibrate(10); }} 
+                        onRemove={(id) => { removeItem(id); vibrate([20, 10, 20]); }} 
+                        formatRupiah={formatRupiah} 
+                    />
+                ))
+            )}
+        </div>
+
+        {/* Receipt Totals & Smart Checkout */}
+        <div className="flex-shrink-0 border-t border-[var(--surface-border)] bg-[var(--surface-1)] p-4 sm:p-5 space-y-3 sm:space-y-4 shadow-[0_-12px_30px_rgba(0,0,0,0.12)] pb-8 sm:pb-5">
+            <div className="space-y-1.5 px-0.5">
+                <div className="flex justify-between text-[11px] text-[var(--text-muted)] font-medium">
+                    <span>Subtotal ({finalTotalItems})</span>
+                    <span className="text-[var(--text-primary)] tracking-tight">{formatRupiah(totalAmount)}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] text-[var(--text-muted)] font-medium">
+                    <div className="flex items-center gap-2">
+                        <span>Diskon</span>
+                        <select 
+                            value={txDiscountType} 
+                            onChange={(e) => setTxDiscountType(e.target.value)} 
+                            className="bg-[var(--surface-3)] text-[9px] font-bold rounded px-1 py-0.5 outline-none text-[var(--text-primary)]"
+                        >
+                            <option value="fixed">Rp</option>
+                            <option value="percentage">%</option>
+                        </select>
+                    </div>
+                    <input
+                        type="number"
+                        placeholder="0"
+                        min="0"
+                        className="w-16 bg-transparent text-right font-bold text-[var(--text-primary)] focus:outline-none"
+                        value={txDiscount}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === '' || Number(val) >= 0) setTxDiscount(val);
+                        }}
+                    />
+                </div>
+                {taxRate > 0 && (
+                    <div className="flex justify-between text-[11px] text-[var(--text-muted)] font-medium">
+                        <span>Pajak ({taxRate}%)</span>
+                        <span className="text-[var(--text-primary)]">{formatRupiah(taxAmount)}</span>
+                    </div>
+                )}
+                <div className="pt-2 sm:pt-3 mt-2 sm:mt-3 border-t-2 border-dashed border-[var(--surface-border)] flex justify-between items-end bg-[var(--surface-2)]/30 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2">
+                    <span className="text-[13px] font-black text-[var(--text-muted)] uppercase tracking-tighter">TOTAL</span>
+                    <span className="text-2xl font-black text-[var(--color-primary)] tracking-tighter leading-none">{formatRupiah(finalAmount)}</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+                <button
+                    onClick={() => {
+                        if (items.length === 0) {
+                            toast.warning('Keranjang masih kosong! Tambahkan produk terlebih dahulu.');
+                            return;
+                        }
+                        const customerName = customers.find(c => c.id === selectedCustomerId)?.name || 'Guest';
+                        holdTransaction({
+                            items,
+                            customerId: selectedCustomerId,
+                            customerName,
+                            discount: Number(txDiscount) || 0,
+                            discountType: txDiscountType
+                        });
+                        vibrate([30, 20, 30]);
+                        toast.success('Transaksi berhasil ditahan');
+                    }}
+                    disabled={processing}
+                    className="py-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 text-[12px] font-black rounded-xl border border-amber-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group uppercase tracking-widest shadow-sm"
+                >
+                    <Clock size={16} className="group-hover:rotate-12 transition-transform" />
+                    Hold
+                </button>
+
+                <Button
+                    className="py-3 text-[12px] font-black rounded-xl shadow-lg shadow-[var(--color-primary)]/20 uppercase tracking-widest relative group"
+                    disabled={items.length === 0 || processing}
+                    onClick={() => {
+                        setCheckoutModal(true);
+                        vibrate(15);
+                    }}
+                >
+                    Bayar
+                    <span className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-md bg-[var(--surface-3)] text-[8px] font-bold text-[var(--text-secondary)] border border-[var(--surface-border)] opacity-0 group-hover:opacity-100 transition-opacity">F8</span>
+                </Button>
+            </div>
+        </div>
       </div>
 
-      {/* Checkout Modal */}
+      <div className="modals-container">
+
+      {/* Checkout Modal - Aggressive Zero-Scroll Optimization */}
       <Modal
         isOpen={checkoutModal}
         onClose={() => setCheckoutModal(false)}
         title="Pembayaran"
         size="md"
+        footer={<><Button variant="secondary" onClick={() => setCheckoutModal(false)}>Kembali</Button><Button onClick={() => saveTransactionToDB(paymentMethod)} loading={processing} disabled={paymentMethod === 'cash' && changeValue < 0}>{processing ? 'Memproses...' : 'Selesaikan Transaksi'}</Button></>}
       >
-        <div className="space-y-4">
-          {/* Summary */}
-          <div className="p-4 rounded-xl bg-slate-700/30 border border-slate-700">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-slate-400">Total Item</span>
-              <span className="text-white font-medium">{totalItems} item</span>
+        <div className="space-y-2.5">
+            <div className="py-2 px-3 bg-[var(--surface-2)] rounded-xl border border-[var(--surface-border)] flex flex-col items-center">
+                <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-0.5">Tagihan Total</span>
+                <span className="text-xl font-black text-[var(--text-primary)] tabular-nums">{formatRupiah(finalAmount)}</span>
             </div>
-            {txDiscountAmount > 0 && (
-              <>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-400">Subtotal</span>
-                  <span className="text-white">
-                    {formatRupiah(totalAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-amber-400">Diskon</span>
-                  <span className="text-amber-400">
-                    -{formatRupiah(txDiscountAmount)}
-                  </span>
-                </div>
-              </>
-            )}
-            {taxAmount > 0 && (
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-slate-400">Pajak (PPN {taxRate}%)</span>
-                <span className="text-white">+{formatRupiah(taxAmount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-slate-400">Total Bayar</span>
-              <span className="text-2xl font-bold text-white">
-                {formatRupiah(finalAmount)}
-              </span>
-            </div>
-          </div>
 
-          {/* Pelanggan */}
-          <div>
-            <Select
-              label="Pilih Pelanggan (Opsional)"
-              value={selectedCustomerId}
-              onChange={(e) => setSelectedCustomerId(e.target.value)}
-            >
-              <option value="">-- Pelanggan Umum --</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-            {selectedCustomerId && finalAmount >= 10000 && (
-              <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1">
-                <Tag size={12} />+{Math.floor(finalAmount / 10000)} Poin Member
-                didapatkan!
-              </p>
-            )}
-          </div>
-
-          {/* Payment Method */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Metode Pembayaran
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { id: "cash", label: "Tunai", icon: Banknote },
-                { id: "debit", label: "Debit", icon: CreditCard },
-                { id: "qris", label: "QRIS", icon: QrCode },
-              ].map((method) => (
-                <button
-                  key={method.id}
-                  onClick={() => setPaymentMethod(method.id)}
-                  className={cn(
-                    "p-4 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-2",
-                    paymentMethod === method.id
-                      ? "bg-indigo-500/15 border-indigo-500/50 text-indigo-400 shadow-inner shadow-indigo-500/10"
-                      : "bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500 hover:bg-slate-800",
-                  )}
-                >
-                  <method.icon size={24} />
-                  <span className="text-sm font-medium">{method.label}</span>
+            <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => { setPaymentMethod("cash"); vibrate(5); playAudio('click'); }} className={cn("p-1.5 rounded-xl border-2 transition-all flex flex-col items-center gap-0.5", paymentMethod === "cash" ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5" : "border-[var(--surface-border)] bg-[var(--surface-1)] text-[var(--text-muted)]")}>
+                    <Banknote size={16} className={paymentMethod === "cash" ? "text-[var(--color-primary)]" : ""} />
+                    <span className="text-[11px] font-bold">Tunai</span>
                 </button>
-              ))}
+                <button onClick={() => { setPaymentMethod("qris"); vibrate(5); playAudio('click'); }} className={cn("p-1.5 rounded-xl border-2 transition-all flex flex-col items-center gap-0.5", paymentMethod === "qris" ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5" : "border-[var(--surface-border)] bg-[var(--surface-1)] text-[var(--text-muted)]")}>
+                    <QrCode size={16} className={paymentMethod === "qris" ? "text-[var(--color-primary)]" : ""} />
+                    <span className="text-[11px] font-bold">QRIS / Non-Tunai</span>
+                </button>
             </div>
-          </div>
 
-          {/* Paid Amount (for cash) */}
-          {paymentMethod === "cash" && (
-            <div className="animate-fade-in mt-2">
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Uang Diterima
-              </label>
-              <input
-                type="number"
-                value={paidAmount}
-                onChange={(e) => setPaidAmount(e.target.value)}
-                placeholder="Masukkan jumlah uang..."
-                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3.5 text-white text-lg placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all font-medium"
-                autoFocus
-              />
-              {/* Quick amounts */}
-              <div className="flex gap-2 mt-3 flex-wrap">
-                {[finalAmount, 50000, 100000, 200000].map((amount) => (
-                  <button
-                    key={amount}
-                    onClick={() => setPaidAmount(String(amount))}
-                    className="px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer"
-                  >
-                    {formatRupiah(amount)}
-                  </button>
-                ))}
-              </div>
-              {change >= 0 && paidAmount && (
-                <div className="mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex justify-between items-center animate-fade-in">
-                  <span className="text-emerald-400 text-sm font-medium">Kembalian</span>
-                  <span className="text-emerald-400 font-bold text-xl">
-                    {formatRupiah(change)}
-                  </span>
+            {paymentMethod === 'cash' && (
+                <div className="space-y-2 animate-slide-up">
+                    <div className="relative group">
+                        <Input 
+                            ref={paidAmountRef}
+                            label="Uang Diterima" 
+                            type="number" 
+                            value={paidAmount} 
+                            onChange={(e) => setPaidAmount(e.target.value)} 
+                            placeholder="0" 
+                            className="text-base font-bold py-1" 
+                        />
+                        <span className="absolute top-0 right-0 px-1.5 py-0.5 rounded-md bg-[var(--surface-3)] text-[8px] font-bold text-[var(--text-secondary)] border border-[var(--surface-border)] opacity-60">F9</span>
+                    </div>
+                    <div className="grid grid-cols-2 min-[400px]:grid-cols-3 gap-2">
+                        {[10000, 20000, 50000, 100000, 200000].map(amt => {
+                            const isSelected = Number(paidAmount) === amt && Number(paidAmount) !== finalAmount;
+                            return (
+                                <button 
+                                    key={amt} 
+                                    onClick={() => setPaidAmount(String(amt))} 
+                                    className={cn(
+                                        "py-3 rounded-xl border-2 text-[12px] font-black transition-all duration-200 active:scale-[0.92] flex flex-col items-center justify-center gap-0.5",
+                                        isSelected 
+                                            ? "border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-[0_0_15px_rgba(37,99,235,0.1)]" 
+                                            : "border-[var(--surface-border)] bg-[var(--surface-2)]/30 text-[var(--text-secondary)] hover:border-[var(--text-muted)]"
+                                    )}
+                                >
+                                    <span className="opacity-60 text-[8px] uppercase tracking-widest">Rp</span>
+                                    {formatRupiahShort(amt)}
+                                </button>
+                            );
+                        })}
+                        <button 
+                            onClick={() => { setPaidAmount(String(finalAmount)); vibrate(10); playAudio('click'); }}
+                            className={cn(
+                                "py-3 rounded-xl border-2 text-[12px] font-black transition-all duration-200 active:scale-[0.92] flex flex-col items-center justify-center gap-0.5",
+                                Number(paidAmount) === finalAmount
+                                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 shadow-sm"
+                                    : "border-emerald-500/30 bg-emerald-500/5 text-emerald-600/80 hover:bg-emerald-500/10"
+                            )}
+                        >
+                            <span className="opacity-60 text-[8px] uppercase tracking-widest">Tunai</span>
+                            UANG PAS
+                        </button>
+                    </div>
+                    {changeValue >= 0 ? (
+                        <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-emerald-500">Kembalian</span>
+                            <span className="text-base font-black text-emerald-500">{formatRupiah(changeValue)}</span>
+                        </div>
+                    ) : paidAmount && (
+                        <div className="p-2 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-red-500">Kurang</span>
+                            <span className="text-base font-black text-red-500">{formatRupiah(Math.abs(changeValue))}</span>
+                        </div>
+                    )}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-slate-800/50 mt-2">
-            <Button
-              variant="secondary"
-              className="px-6"
-              onClick={() => setCheckoutModal(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              className="flex-1 text-base shadow-lg shadow-indigo-500/25"
-              size="lg"
-              onClick={handleCheckout}
-              loading={processing}
-              disabled={paymentMethod === "cash" && (!paidAmount || change < 0)}
-            >
-              Proses Pembayaran
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Barcode Scanner Modal */}
-      <Modal
-        isOpen={scannerModal}
-        onClose={() => setScannerModal(false)}
-        title="Scan Barcode Produk"
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="bg-slate-800 rounded-xl overflow-hidden min-h-[300px] flex items-center justify-center relative">
-            <div id="cashier-barcode-reader" className="w-full"></div>
-
-            {/* CSS overrides for the html5-qrcode library to match dark theme */}
-            <style jsx global>{`
-              #cashier-barcode-reader {
-                border: none !important;
-                width: 100%;
-                border-radius: 0.75rem;
-                overflow: hidden;
-              }
-              #cashier-barcode-reader video {
-                border-radius: 0.75rem;
-              }
-              #cashier-barcode-reader__dashboard_section_csr span {
-                color: white !important;
-              }
-              #cashier-barcode-reader__dashboard_section_swaplink {
-                color: #818cf8 !important;
-              }
-              #cashier-barcode-reader button {
-                background-color: #4f46e5 !important;
-                color: white !important;
-                border: none !important;
-                padding: 8px 16px !important;
-                border-radius: 8px !important;
-                font-weight: 500 !important;
-                margin: 4px !important;
-                cursor: pointer;
-              }
-              #cashier-barcode-reader a {
-                color: #818cf8 !important;
-              }
-            `}</style>
-          </div>
-          <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-center">
-            <p className="text-sm text-indigo-300">
-              Arahkan kamera ke barcode (SKU) produk. <br />
-              Produk otomatis akan masuk ke keranjang.
-            </p>
-          </div>
-          <Button
-            className="w-full"
-            variant="secondary"
-            onClick={() => setScannerModal(false)}
-          >
-            Tutup
-          </Button>
+            )}
         </div>
       </Modal>
 
@@ -1467,87 +1088,124 @@ export default function CashierPage() {
       <Modal
         isOpen={successModal}
         onClose={() => setSuccessModal(false)}
+        title="Transaksi Berhasil"
         size="sm"
+        headerClassName="hidden"
+        footer={<Button className="w-full py-3" onClick={() => setSuccessModal(false)}>Selesai</Button>}
       >
-        <div className="text-center py-4">
-          <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center mb-4 animate-scale-in">
-            <CheckCircle size={32} className="text-emerald-400" />
-          </div>
-          <h3 className="text-xl font-bold text-white mb-1">
-            Pembayaran Berhasil!
-          </h3>
-          <p className="text-slate-400 text-sm mb-6">{lastInvoice}</p>
-          <div className="flex gap-2 mb-3">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              icon={Printer}
-              onClick={() =>
-                lastCheckoutRef.current && printReceipt(lastCheckoutRef.current)
-              }
-            >
-              Cetak Struk
-            </Button>
-            <Button
-              variant="secondary"
-              className="flex-1"
-              icon={Share2}
-              onClick={() =>
-                lastCheckoutRef.current &&
-                shareReceiptWhatsApp(lastCheckoutRef.current)
-              }
-            >
-              WhatsApp
-            </Button>
-          </div>
-          <Button className="w-full" onClick={() => setSuccessModal(false)}>
-            Transaksi Baru
-          </Button>
+        <div className="flex flex-col items-center py-6">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4 text-emerald-500">
+                <CheckCircle size={40} />
+            </div>
+            <h2 className="text-lg font-bold mb-1">Kembalian: {lastCheckoutRef.current?.change ? formatRupiah(lastCheckoutRef.current.change) : 'Pas'}</h2>
+            <p className="text-[12px] text-[var(--text-muted)] mb-8">Transaksi telah tersimpan dan stok diperbarui.</p>
+            
+            <div className="grid grid-cols-2 gap-3 w-full">
+                <Button variant="secondary" icon={Printer} className="text-xs" onClick={() => printReceipt(lastCheckoutRef.current)}>Cetak Struk</Button>
+                <Button variant="secondary" icon={Share2} className="text-xs" onClick={() => shareReceiptWhatsApp(lastCheckoutRef.current)}>Kirim WA</Button>
+            </div>
         </div>
       </Modal>
 
-      {/* Hold Bills Modal */}
+      {/* Scanner Modal */}
+      <Modal isOpen={scannerModal} onClose={() => setScannerModal(false)} title="Barcode Scanner">
+        <div id="cashier-barcode-reader" className="w-full"></div>
+      </Modal>
+
+      {/* Shift Modal */}
       <Modal
-        isOpen={holdModal}
-        onClose={() => setHoldModal(false)}
-        title="Pesanan Tertahan"
+        isOpen={openShiftModal}
+        onClose={() => {}} // Force shift modal
+        title="Buka Shift Kasir"
+        footer={<Button className="w-full" onClick={handleOpenShift} loading={processing}>Mulai Berjualan</Button>}
+      >
+        <div className="space-y-4">
+            <p className="text-xs text-[var(--text-muted)]">Harap masukkan modal awal di laci kas sebelum memulai shift Anda.</p>
+            <Input label="Modal Awal (Tunai)" type="number" value={startingCash} onChange={(e) => setStartingCash(e.target.value)} placeholder="0" />
+            <div className="grid grid-cols-3 gap-2">
+                {[50000, 100000, 200000].map(val => <button key={val} onClick={() => setStartingCash(String(val))} className="px-3 py-1.5 rounded-lg border border-[var(--surface-border)] text-[11px] font-bold hover:bg-[var(--surface-2)]">{formatRupiahShort(val)}</button>)}
+            </div>
+        </div>
+      </Modal>
+
+      {/* Close Shift Modal */}
+      <Modal
+        isOpen={closeShiftModal}
+        onClose={() => setCloseShiftModal(false)}
+        title="Tutup Shift Kasir"
+        footer={<><Button variant="secondary" onClick={() => setCloseShiftModal(false)}>Batal</Button><Button variant="danger" onClick={handleCloseShift} loading={processing} disabled={actualCash === ""}>Selesaikan Shift</Button></>}
+      >
+        <div className="space-y-4">
+            <div className="p-3 bg-[var(--surface-2)] rounded-xl border border-[var(--surface-border)]">
+                <p className="text-xs text-[var(--text-muted)] mb-1">Modal Awal Shift Ini</p>
+                <p className="font-bold text-[var(--text-primary)] text-lg">{activeShift ? formatRupiah(activeShift.starting_cash) : 0}</p>
+            </div>
+            
+            <p className="text-xs text-[var(--text-muted)]">Harap hitung dan masukkan nominal asli <strong>Uang Tunai</strong> yang ada di laci saat ini.</p>
+            <Input 
+              label="Tunai Cek Fisik (Laci Aktual)" 
+              type="number" 
+              value={actualCash} 
+              onChange={(e) => setActualCash(e.target.value)} 
+              placeholder="0" 
+              className="font-bold text-lg"
+            />
+            <p className="text-[10px] text-rose-500 font-bold">*Lalu tekan Selesaikan Shift untuk membandingkan uang di laci dengan sistem.</p>
+        </div>
+      </Modal>
+
+      {/* Held Transactions Modal */}
+      <Modal
+        isOpen={heldModal}
+        onClose={() => setHeldModal(false)}
+        title="Transaksi Ditahan"
         size="md"
       >
         <div className="space-y-3">
-          {heldBills.length === 0 ? (
-            <p className="text-sm text-slate-500 text-center py-4">
-              Tidak ada pesanan yang ditahan
-            </p>
+          {heldTransactions.length === 0 ? (
+            <EmptyState 
+              compact 
+              icon={Clock} 
+              title="Antrian Kosong" 
+              description="Tidak ada transaksi yang sedang ditahan." 
+            />
           ) : (
-            heldBills.map((bill) => (
-              <div
-                key={bill.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-slate-800/50 border border-slate-700"
+            heldTransactions.map((tx) => (
+              <div 
+                key={tx.id} 
+                className="p-3.5 rounded-xl bg-[var(--surface-2)]/40 border border-[var(--surface-border)] hover:border-[var(--color-primary)]/30 transition-all group"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white">
-                    {bill.items.length} produk — {formatRupiah(bill.total)}
-                  </p>
-                  <div className="flex items-center gap-1 text-xs text-slate-500">
-                    <Clock size={12} />
-                    {new Date(bill.timestamp).toLocaleString("id-ID", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      day: "2-digit",
-                      month: "short",
-                    })}
+                <div className="flex justify-between items-start mb-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="info">{tx.customerName}</Badge>
+                      <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                        {dayjs(tx.heldAt).format('HH:mm')}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-bold text-[var(--text-primary)] truncate">
+                      {tx.items.map(i => i.name).join(', ')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-[var(--color-primary)]">
+                        {formatRupiah(tx.items.reduce((sum, i) => sum + (i.price * i.quantity), 0))}
+                    </p>
+                    <p className="text-[10px] text-[var(--text-muted)] font-bold">{tx.items.length} Item</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => recallBill(bill)}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium transition-colors cursor-pointer"
+                <div className="flex gap-2 pt-2 border-t border-[var(--surface-border)]/50 mt-2">
+                  <Button 
+                    variant="primary" 
+                    size="sm" 
+                    className="flex-1 py-1.5 text-[10px] uppercase font-black tracking-widest"
+                    onClick={() => handleRestore(tx.id)}
                   >
-                    Recall
-                  </button>
-                  <button
-                    onClick={() => deleteHeldBill(bill.id)}
-                    className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors cursor-pointer"
+                    Ambil / Lanjutkan
+                  </Button>
+                  <button 
+                    onClick={() => deleteHeldTransaction(tx.id)}
+                    className="px-3 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -1557,90 +1215,7 @@ export default function CashierPage() {
           )}
         </div>
       </Modal>
-
-      {/* Open Shift Modal */}
-      <Modal
-        isOpen={openShiftModal}
-        onClose={() => {}}
-        title="Buka Shift Kasir"
-        disableOutsideClick
-      >
-        <div className="space-y-4">
-          <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-            <p className="text-sm text-indigo-300">
-              Silakan masukkan jumlah Uang Modal / Saldo Awal yang ada di laci
-              kasir saat ini untuk memulai shift.
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Modal Awal / Saldo Laci (Rp)
-            </label>
-            <input
-              type="number"
-              value={startingCash}
-              onChange={(e) => setStartingCash(e.target.value)}
-              placeholder="Contoh: 100000"
-              className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-              autoFocus
-            />
-          </div>
-          <Button
-            className="w-full mt-2"
-            onClick={handleOpenShift}
-            loading={processing}
-            disabled={!startingCash}
-          >
-            Buka Shift
-          </Button>
-        </div>
-      </Modal>
-
-      {/* Close Shift Modal */}
-      <Modal
-        isOpen={closeShiftModal}
-        onClose={() => setCloseShiftModal(false)}
-        title="Tutup Shift Kasir"
-      >
-        <div className="space-y-4">
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
-            <p className="text-sm text-rose-300">
-              Hitung jumlah Uang Tunai aktual di dalam laci kasir sekarang dan
-              masukkan nilainya di bawah ini untuk menutup shift.
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Uang Fisik di Laci (Rp)
-            </label>
-            <input
-              type="number"
-              value={actualCash}
-              onChange={(e) => setActualCash(e.target.value)}
-              placeholder="Contoh: 1540000"
-              className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white text-lg placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-              autoFocus
-            />
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button
-              variant="secondary"
-              className="flex-1"
-              onClick={() => setCloseShiftModal(false)}
-            >
-              Batal
-            </Button>
-            <Button
-              className="flex-1 bg-rose-500 hover:bg-rose-600 focus:ring-rose-500/50 shadow-rose-500/25"
-              onClick={handleCloseShift}
-              loading={processing}
-              disabled={!actualCash}
-            >
-              Akhiri Shift
-            </Button>
-          </div>
-        </div>
-      </Modal>
+    </div>
     </div>
   );
 }

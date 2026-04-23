@@ -20,13 +20,13 @@ export function formatRupiah(amount) {
  */
 export function formatRupiahShort(amount) {
     if (amount >= 1000000000) {
-        return `Rp ${(amount / 1000000000).toFixed(1).replace('.0', '')} M`;
+        return `Rp${(amount / 1000000000).toFixed(1).replace('.0', '')}M`;
     }
     if (amount >= 1000000) {
-        return `Rp ${(amount / 1000000).toFixed(1).replace('.0', '')} Jt`;
+        return `Rp${(amount / 1000000).toFixed(1).replace('.0', '')}Jt`;
     }
     if (amount >= 1000) {
-        return `Rp ${(amount / 1000).toFixed(0)} Rb`;
+        return `Rp${(amount / 1000).toFixed(0)}Rb`;
     }
     return formatRupiah(amount);
 }

@@ -1,21 +1,24 @@
 {
-    "name": "WarungKu POS",
+    "name": "WarungKu Premium POS",
     "short_name": "WarungKu",
-    "description": "Aplikasi Point of Sale untuk UMKM",
+    "description": "Sistem Kasir Pintar & Manajemen Stok UMKM Modern",
     "start_url": "/dashboard",
     "display": "standalone",
-    "background_color": "#0f172a",
-    "theme_color": "#6366f1",
+    "orientation": "portrait-primary",
+    "background_color": "#0c1222",
+    "theme_color": "#2563eb",
     "icons": [
         {
             "src": "/icon-192x192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         },
         {
             "src": "/icon-512x512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
     ]
 }

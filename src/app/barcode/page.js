@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Barcode, Search, Printer, Package, Download, Check } from 'lucide-react';
+import { Barcode, Search, Printer, Package, Download, Check, AlertTriangle } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -146,18 +146,21 @@ export default function BarcodePage() {
                                 key={product.id}
                                 onClick={() => toggleSelect(product.id)}
                                 className={`relative p-4 rounded-2xl border text-left transition-all cursor-pointer ${isSelected
-                                        ? 'bg-indigo-500/10 border-indigo-500/40'
-                                        : 'bg-[var(--surface-0)] border-[var(--surface-border)] hover:border-indigo-500/30'
+                                        ? 'bg-blue-500/10 border-blue-500/40'
+                                        : 'bg-[var(--surface-0)] border-[var(--surface-border)] hover:border-blue-500/30'
                                     }`}
                             >
                                 {isSelected && (
-                                    <div className="absolute top-2 right-2 w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center animate-scale-in">
+                                    <div className="absolute top-2 right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center animate-scale-in">
                                         <Check size={14} className="text-white" />
                                     </div>
                                 )}
                                 <p className="text-sm font-medium text-[var(--text-primary)] truncate">{product.name}</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-0.5">SKU: {product.sku || 'N/A'}</p>
-                                <p className="text-sm font-bold text-indigo-400 mt-1">{formatRupiah(product.price)}</p>
+                                <p className={`text-xs mt-0.5 ${product.sku ? 'text-[var(--text-muted)]' : 'text-amber-400 font-semibold'}`}>
+                                    SKU: {product.sku || 'Belum ada'}
+                                    {!product.sku && <AlertTriangle size={10} className="inline ml-1 mb-0.5" />}
+                                </p>
+                                <p className="text-sm font-bold text-blue-400 mt-1">{formatRupiah(product.price)}</p>
                             </button>
                         );
                     })}
@@ -168,6 +171,15 @@ export default function BarcodePage() {
             {selectedProducts.length > 0 && (
                 <Card>
                     <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Preview Barcode ({selectedProducts.length} produk)</h3>
+                    {selectedProducts.some(p => !p.sku) && (
+                        <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
+                            <AlertTriangle size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-amber-300 font-medium">
+                                Beberapa produk belum memiliki SKU. Barcode menggunakan ID internal sebagai fallback.
+                                Sebaiknya tambahkan SKU di halaman Produk agar scanner kasir bisa membaca dengan benar.
+                            </p>
+                        </div>
+                    )}
                     <div ref={printRef} className="flex flex-wrap gap-4">
                         {selectedProducts.map((product) => (
                             <div key={product.id} className="label p-3 rounded-xl bg-white text-center">
