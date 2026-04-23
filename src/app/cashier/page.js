@@ -442,6 +442,28 @@ export default function CashierPage() {
       setProducts(updatedProducts);
       saveProductsOffline(updatedProducts);
 
+      // --- Trigger Push Notification for Low Stock ---
+      if (isOnline) {
+        const lowStockItems = updatedProducts.filter(p => {
+          const soldItem = items.find(item => item.id === p.id);
+          return soldItem && p.stock <= (p.min_stock ?? 5);
+        });
+
+        if (lowStockItems.length > 0) {
+          const itemNames = lowStockItems.map(i => i.name).join(', ');
+          fetch('/api/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              storeId: storeId,
+              title: 'Peringatan Stok Menipis ⚠️',
+              message: `Stok menipis setelah penjualan: ${itemNames}. Segera restock!`,
+              url: '/stock'
+            })
+          }).catch(err => console.error('Failed to trigger push', err));
+        }
+      }
+
       setLastInvoice(invoiceNumber);
       lastCheckoutRef.current = { 
         ...payload, 

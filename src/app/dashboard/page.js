@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { StatCard } from "@/components/ui/Card";
 import { withRBAC } from "@/components/layout/withRBAC";
+import PushNotificationManager from "@/components/dashboard/PushNotificationManager";
 import StockForecastModal from "@/components/dashboard/StockForecastModal";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -662,16 +663,19 @@ function DashboardPage() {
             </div>
           </div>
         </div>
-        {/* Refresh Button */}
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          title="Perbarui data dashboard"
-          className="self-start sm:self-center flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--surface-2)]/50 border border-[var(--surface-border)] text-[var(--text-secondary)] text-[12px] font-semibold hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        {/* Header Actions */}
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <PushNotificationManager />
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            title="Perbarui data dashboard"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--surface-2)]/50 border border-[var(--surface-border)] text-[var(--text-secondary)] text-[12px] font-semibold hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ===== Stat Cards ===== */}
